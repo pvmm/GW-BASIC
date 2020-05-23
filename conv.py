@@ -711,13 +711,97 @@ class Parser:
 
             return self._error("Don't know how to parse token %s" % token)
 
+class PasmoWriter:
+    def __init__(self, parser):
+        self.parser = parser
+
+    def lines(self):
+        try:
+            for token in self.parser.parse():
+                line = getattr(self, '_gen_' + token['type'])(token)
+                if line is not None:
+                    yield line
+        except AttributeError:
+            raise SyntaxError("Don't know how to generate token of type %s for Pasmo: %s" % (token['type'], token))
+
+    def _gen_comment(self, token):
+        return '\n'.join('; %s' % line for line in token['value'].split('\n'))
+
+    def _gen_directive_radix(self, token):
+        return '\t.radix %s' % token['value']
+
+    def _gen_assign(self, token):
+        return '\t%s=%s' % (token['symbol'], token['value'])
+
+    def _gen_cseg(self, token):
+        return None
+
+    def _gen_assume(self, token):
+        return None
+
+    def _gen_xlist(self, token):
+        return None
+
+    def _gen_list(self, token):
+        return None
+
+    def _gen_extern(self, token):
+        return None
+
+    def _gen_public(self, token):
+        return None
+
+    def _gen_sall(self, token):
+        return None
+
+    def _gen_include(self, token):
+        return '\tinclude %s' % token['filename']
+
+    def _gen_title(self, token):
+        return ('\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n' + \
+                ';; %s\n' + \
+                ';;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n') % token['value']
+
+    def _gen_subtitle(self, token):
+        return '\n;;; %s ;;;\n' % token['value']
+
+    def _gen_label(self, token):
+        return '%s:' % token['identifier']
+
+    def _gen_instruction(self, token):
+        instr = '\t%s %s' % (token['op'], ', '.join(token['operands']))
+        return '%s ; %s' % (instr, token['comment']) if token['comment'] else instr
+
+    def _gen_macro_call(self, token):
+        args = []
+        for arg in token['args']:
+            if arg['type'] in ('token', 'number'):
+                args.append(arg['value'])
+            else:
+                raise SyntaxError("Unexpected type for macro argument: %s" % arg['type'])
+        line = '\t%s %s' % (token['identifier'], ', '.join(args))
+        return '%s ; %s' % (line, token['comment']) if token['comment'] else line
+
+    def _gen_org(self, token):
+        return '\torg %s' % token['value']
+
+    def _gen_db(self, token):
+        return '\tdb %s' % ', '.join(str(b) for b in token['bytes'])
+
+    def _gen_dw(self, token):
+        return '\tdw %s' % ', '.join(str(b) for b in token['bytes'])
+
+    def _gen_label_def(self, token):
+        return '%s: ; %s' % (token['identifier'], ' '.join(token['attrs']))
+
 if __name__ == '__main__':
     lexer = Lexer(sys.stdin)
     parser = Parser(lexer)
+    writer = PasmoWriter(parser)
 
-    for token in parser.parse():
-        print(token)
+    try:
+        for line in writer.lines():
+            print(line)
+    except SyntaxError as e:
+        print("Exception: %s" % e)
 
-    print("Lexer stopped at line %d, col %d" % (lexer.line, lexer.col))
-
-    
