@@ -1101,6 +1101,8 @@ class PasmoWriter:
             if self._is_ptr_read_through_bx(op2):
                 return '%s (HL)' % z80
             return '%s %s' % (z80, ' '.join(self._flatten(op2)))
+        if op1 == 'BX' and op2 == 'DX':
+            return 'SBC HL, DE'
         raise SyntaxError("Don't know how to generate %s with ops %s, %s" % (z80, op1, op2))
 
     def _gen_instruction_sbb(self, token):
