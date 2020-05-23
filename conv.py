@@ -156,7 +156,7 @@ class Lexer:
 
                 return self._lexer_asm
 
-    def _lexer_token_until_end_of_line(self, typ):
+    def _lexer_token_until_end_of_line(self, typ, lex_comma=False):
         self._ignore()
 
         while True:
@@ -165,6 +165,11 @@ class Lexer:
                 self._backup()
                 self._emit_token(typ, value=self._current_token().strip())
                 return self._lexer_token
+            if c == ',':
+                self._backup()
+                self._emit_token(typ, value=self._current_token().strip())
+                self.pos += 1
+                self._ignore()
 
     def _lexer_title(self):
         return self._lexer_token_until_end_of_line('title')
@@ -173,13 +178,13 @@ class Lexer:
         return self._lexer_token_until_end_of_line('subtitle')
 
     def _lexer_extern(self):
-        return self._lexer_token_until_end_of_line('extern')
+        return self._lexer_token_until_end_of_line('extern', lex_comma=True)
 
     def _lexer_db(self):
-        return self._lexer_token_until_end_of_line('db')
+        return self._lexer_token_until_end_of_line('db', lex_comma=True)
 
     def _lexer_dw(self):
-        return self._lexer_token_until_end_of_line('dw')
+        return self._lexer_token_until_end_of_line('dw', lex_comma=True)
 
     def _lexer_assign(self):
         self._backup()
@@ -206,7 +211,7 @@ class Lexer:
             if c == '=':
                 return self._lexer_assign
 
-            if not c.isalnum() and not c in ':,.[]?$_&':
+            if not c.isalnum() and not c in ':.[]?$_&':
                 self._backup()
 
                 curtoken = self._current_token().upper()
@@ -261,6 +266,10 @@ class Lexer:
 
             if c == '.':
                 return self._lexer_directive
+
+            if c == ',':
+                self._emit_token('comma')
+                continue
 
             if c.isdigit():
                 return self._lexer_number
@@ -406,9 +415,21 @@ class Parser:
         return self._parse_asm
 
     def _parse_public(self):
-        token = self._must_next_type('token', "Expecting identifiers")
-        for identifier in token['value'].split(','):
-            self._emit({'type': 'public', 'identifier': identifier.strip()})
+        while True:
+            token = self._next()
+            if token is None:
+                return None
+
+            if token['type'] == 'token':
+                for identifier in token['value'].split(','):
+                    self._emit({'type': 'public', 'identifier': identifier.strip()})
+            elif token['type'] == 'comma':
+                continue
+            elif token['type'] == 'newline':
+                break
+            elif token['type'] == 'comment':
+                self._emit({'type': 'comment', 'value': token['value']})
+                break
         return self._parse_asm
 
     def _parse_extern(self, token):
@@ -450,25 +471,59 @@ class Parser:
             '?I'
         }
 
+    def _parse_x86_instruction_operand(self, operand):
+        if len(operand) == 1:
+            try:
+                return int(operand[0], self.radix)
+            except ValueError:
+                return operand[0]
+
+        if operand[0] in ('OFFSET', 'BYTE', 'SHORT', 'LOW', 'PTR'):
+            return (operand[0], self._parse_x86_instruction_operand(operand[1:]))
+
+        if operand[0].isdigit():
+            if operand[1] == 'H':
+                return int(operand[0], 16)
+            if operand[1] == 'D':
+                return int(operand[0], 10)
+            if operand[1] == 'O':
+                return int(operand[0], 8)
+
+        def is_expr(op):
+            if op[0] == '"' and op[-1] == '"':
+                return is_expr(op[1:-1])
+            for c in op:
+                if not c.isalnum() and not c in '+-$':
+                    return False
+            return True
+        if all(is_expr(op) for op in operand):
+            return ''.join(operand)
+
+        return self._error("Unknown kind of operand: %s" % operand)
+
     def _parse_x86_instruction(self, token):
         instruction = token['value']
         operands = []
         comment = None
+        cur_operand = []
         while True:
             token = self._must_next("Expecting operands for %s" % instruction)
-            if token['type'] == 'token':
-                for tok in token['value'].split(','):
-                    operands.append(tok)
-            elif token['type'] in ('number', 'string'):
-                operands.append(token['value'])
+            if token['type'] in ('token', 'number', 'string'):
+                cur_operand.append(token['value'])
             elif token['type'] == 'comment':
                 comment = token['value']
                 break
             elif token['type'] == 'newline':
                 break
+            elif token['type'] == 'comma':
+                operands.append(self._parse_x86_instruction_operand(cur_operand))
+                cur_operand = []
+                continue
             else:
                 return self._error("Unexpected token: %s" % token)
-        self._emit({'type': 'instruction', 'op': instruction, 'operands': operands, 'comment': comment})
+        if cur_operand:
+            operands.append(self._parse_x86_instruction_operand(cur_operand))
+        self._emit({'type': 'instruction', 'op': instruction, 'operands': tuple(operands), 'comment': comment})
         return self._parse_asm
 
     def _parse_macro_call(self, token):
@@ -476,18 +531,28 @@ class Parser:
         peek = self._peek()
         if peek['type'] == 'token' and peek['value'] == 'MACRO':
                 return self._parse_macro(token)
-        args = []
+
+        operands = []
         comment = None
+        cur_operand = []
         while True:
-            token = self._must_next("Expecting arguments for macro %s" % macro)
-            if token['type'] == 'comment':
+            token = self._must_next("Expecting operands for %s" % macro)
+            if token['type'] in ('token', 'number', 'string'):
+                cur_operand.append(token)
+            elif token['type'] == 'comment':
                 comment = token['value']
                 break
             elif token['type'] == 'newline':
                 break
+            elif token['type'] == 'comma':
+                operands.append(cur_operand)
+                cur_operand = []
+                continue
             else:
-                args.append(token)
-        self._emit({'type': 'macro_call', 'identifier': macro, 'args': args, 'comment': comment})
+                return self._error("Unexpected token: %s" % token)
+        if cur_operand:
+            operands.append(cur_operand)
+        self._emit({'type': 'macro_call', 'identifier': macro, 'args': operands, 'comment': comment})
         return self._parse_asm
 
     def _parse_data(self, typ, token):
@@ -779,11 +844,12 @@ class PasmoWriter:
 
     def _gen_macro_call(self, token):
         args = []
-        for arg in token['args']:
-            if arg['type'] in ('token', 'number'):
-                args.append(arg['value'])
-            else:
-                raise SyntaxError("Unexpected type for macro argument: %s" % arg['type'])
+        for arg_tuple in token['args']:
+            for arg in arg_tuple:
+                if arg['type'] in ('token', 'number'):
+                    args.append(arg['value'])
+                else:
+                    raise SyntaxError("Unexpected type for macro argument: %s" % arg['type'])
         line = '\t%s %s' % (token['identifier'], ', '.join(args))
         return '%s ; %s' % (line, token['comment']) if token['comment'] else line
 
