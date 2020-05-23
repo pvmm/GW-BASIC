@@ -858,8 +858,10 @@ class PasmoWriter:
                     out.extend(flatten(op))
                 elif isinstance(op, str):
                     out.append(op)
+                elif isinstance(op, int):
+                    out.append(str(op))
                 else:
-                    raise SyntaxError("Unknown type to flatten!")
+                    raise SyntaxError("Unknown type to flatten! %s" % op)
             return out
         return flatten(ops)
 
@@ -882,7 +884,8 @@ class PasmoWriter:
                     operands.append(' '.join(self._flatten(op)))
             else:
                 operands.append(op)
-        return 'LD %s' % ', '.join(operands)
+
+        return 'LD %s' % ', '.join(str(op) for op in operands)
 
     def _gen_instruction_add(self, token):
         assert len(token['operands']) == 2
@@ -955,13 +958,23 @@ class PasmoWriter:
             return 'PUSH %s' % self.regmap[op]
         raise SyntaxError("Only 16-bit registers can be popped (trying %s)" % op)
 
+    def _gen_instruction_pushf(self, token):
+        assert len(token['operands']) == 0
+        return 'PUSH AF' # FIXME: Not really interested in saving A here... maybe store in a prime?
+
+    def _gen_instruction_popf(self, token):
+        assert len(token['operands']) == 0
+        return 'POP AF' # FIXME: Not really interested in restoring A here... maybe store in a prime?
+
     def _gen_instruction_or(self, token):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
-        if op1[1] == 'AL' and not self._is_16bit_reg(op2) and op2 in self.regmap:
+        if op1 == 'AL' and not self._is_16bit_reg(op2) and op2 in self.regmap:
             return 'OR %s' % self.regmap[op2]
         if op1 == op2:
             return 'OR A' # NOP, but clear C/N/P/V flags
+        if op1 == 'AL' and self._is_ptr_read_through_bx(op2):
+            return 'OR (HL)'
         raise SyntaxError("Don't know how to generate an OR with these yet: %s, %s" % (op1, op2))
 
     def _gen_instruction_dec(self, token):
@@ -976,7 +989,7 @@ class PasmoWriter:
     def _gen_instruction_call(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
-        if op.isalpha():
+        if op.isalnum():
             return 'CALL %s' % op
         raise SyntaxError("Don't know how to generate CALL with arg %s" % op)
 
@@ -994,6 +1007,28 @@ class PasmoWriter:
             return 'JP C, %s' % op[0]
         return 'JP C, %s' % self._flatten(op)[-1]
 
+    def _gen_instruction_jnae(self, token):
+        return self._gen_instruction_jb(token)
+
+    def _gen_instruction_jnb(self, token):
+        return self._gen_instruction_jae(token)
+
+    def _gen_instruction_stc(self, token):
+        assert len(token['operands']) == 0
+        return 'SCF'
+
+    def _gen_instruction_lahf(self, token):
+        assert len(token['operands']) == 0
+        return 'LD A, F'
+
+    def _gen_instruction_sahf(self, token):
+        assert len(token['operands']) == 0
+        return 'LD A, F'
+
+    def _gen_instruction_cmc(self, token):
+        assert len(token['operands']) == 0
+        return 'CCF'
+
     def _gen_instruction_xchg(self, token):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
@@ -1003,7 +1038,11 @@ class PasmoWriter:
             # This is used to implement 8085's XTHL, which is EX (SP), HL in Z80.  The 8086
             # code needs a few more instructions here and we can only convert one instruction
             # at a time with this code, so maybe we'll need some kind of peephole optimizer
-            # in the future.
+            # in the future, or parse the whole file at once and pattern match
+            #		POP SI / XCHG SI, BX / PUSH SI
+            # So that it's essentially just one
+            #		EX (SP), HL
+            # In Z80.
             return 'PUSH HL\n\tEX (SP), IY\n\tPOP HL'
         raise SyntaxError("Only DX and BX can be exchanged (trying %s, %s)" % (op1, op2))
 
@@ -1019,16 +1058,19 @@ class PasmoWriter:
             return 'AND (HL)'
         raise SyntaxError("Don't know how to generate AND with ops %s, %s" % (op1, op2))
 
-    def _gen_instruction_sub(self, token):
+    def _gen_instruction_sub(self, token, z80='SUB'):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
         if op1 == 'AL' and op2 in self.regmap:
-            return 'SUB %s' % self.regmap[op2]
+            return '%s %s' % (z80, self.regmap[op2])
         if op1 == 'AL' and self._is_ptr_read_through_bx(op2):
-            return 'SUB (HL)'
+            return '%s (HL)' % z80
         if op1 == 'AL':
-            return 'SUB %s' % ' '.join(self._flatten(op2))
-        raise SyntaxError("Don't know how to generate SUB with ops %s, %s" % (op1, op2))
+            return '%s %s' % (z80, ' '.join(self._flatten(op2)))
+        raise SyntaxError("Don't know how to generate %s with ops %s, %s" % (z80, op1, op2))
+
+    def _gen_instruction_sbb(self, token):
+        return self._gen_instruction_sub(token, 'SBC')
 
     def _gen_instruction_xor(self, token):
         assert len(token['operands']) == 2
@@ -1036,6 +1078,10 @@ class PasmoWriter:
         if op1 == 'AL' and op2 in self.regmap:
             return 'XOR %s' % self.regmap[op2]
         raise SyntaxError("Don't know how to generate AND with ops %s, %s" % (op1, op2))
+
+    def _gen_instruction_stosb(self, token):
+        assert len(token['operands']) == 0
+        return 'LD (IX), A'
 
     def _gen_instruction(self, token):
         op = token['op']
