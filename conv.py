@@ -1129,7 +1129,7 @@ class PasmoWriter:
         if op2 == 1:
             if op1 == 'AL':
                 return 'RRA'
-            if not self._is_16bit_register(op1) and op1 in self.regmap:
+            if not self._is_16bit_reg(op1) and op1 in self.regmap:
                 return 'RR %s' % self.regmap[op]
             if op1 == '[BX]':
                 return 'RR (HL)'
@@ -1141,7 +1141,7 @@ class PasmoWriter:
         if op2 == 1:
             if op1 == 'AL':
                 return 'RLA'
-            if not self._is_16bit_register(op1) and op1 in self.regmap:
+            if not self._is_16bit_reg(op1) and op1 in self.regmap:
                 return 'RL %s' % self.regmap[op]
             if op1 == '[BX]':
                 return 'RL (HL)'
