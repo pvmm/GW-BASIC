@@ -4,6 +4,7 @@
 
 from collections import deque
 import sys
+import traceback
 
 class Lexer:
     def __init__(self, fp):
@@ -875,4 +876,5 @@ if __name__ == '__main__':
             print(line)
     except SyntaxError as e:
         print("Exception: %s" % e)
+        traceback.print_exc(file=sys.stdout)
 
