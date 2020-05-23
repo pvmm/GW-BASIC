@@ -1135,6 +1135,38 @@ class PasmoWriter:
                 return 'RR (HL)'
         raise SyntaxError("Don't know how to generate ROR with op %s, %s" % (op1, op2))
 
+    def _gen_instruction_rcr(self, token):
+        assert len(token['operands']) == 2
+        op1, op2 = token['operands']
+        if op2 == 1:
+            if op1 == 'AL':
+                return 'RRCA'
+            if op1 in self.regmap:
+                if self._is_16bit_reg(op1):
+                    return 'PUSH HL\n\tADC HL, %s\n\tLD %s, HL\n\tPOP HL' % (self.regmap[op1], self.regmap[op1])
+                else:
+                    return 'RRC %s' % self.regmap[op]
+            if op1 == '[BX]':
+                return 'RRC (HL)'
+
+        raise SyntaxError("Don't know how to generate RCR with op %s, %s" % (op1, op2))
+
+    def _gen_instruction_rcl(self, token):
+        assert len(token['operands']) == 2
+        op1, op2 = token['operands']
+        if op2 == 1:
+            if op1 == 'AL':
+                return 'RLCA'
+            if op1 in self.regmap:
+                if self._is_16bit_reg(op1):
+                    return 'PUSH HL\n\tSBC HL, %s\n\tLD %s, HL\n\tPOP HL' % (self.regmap[op1], self.regmap[op1])
+                else:
+                    return 'RLC %s' % self.regmap[op]
+            if op1 == '[BX]':
+                return 'RLC (HL)'
+
+        raise SyntaxError("Don't know how to generate RCL with op %s, %s" % (op1, op2))
+
     def _gen_instruction_rol(self, token):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
