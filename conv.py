@@ -783,6 +783,17 @@ class Parser:
             return self._error("Don't know how to parse token %s" % token)
 
 class PasmoWriter:
+    regmap = {
+        'BX': 'HL', 'BH': 'H', 'BL': 'L',
+        'DX': 'DE', 'DH': 'D', 'DL': 'E',
+        'CX': 'BC', 'CH': 'B', 'CL': 'C',
+        'SI': 'IY', 'DI': 'IX',
+        'SP': 'SP',
+        'AL': 'A',
+        # FIXME: will need to spill/fill AX, AH, and AL using the Z80 prime
+        # registers because the code uses AX as a 16-bit register extensively
+    }
+
     def __init__(self, parser):
         self.parser = parser
 
