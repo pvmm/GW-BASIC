@@ -435,7 +435,7 @@ class Parser:
             'LOOP', 'TEST', 'CBW', 'NEG', 'JLE', 'JO', 'JGE', 'JL', 'MOVS', 'JPO',
             'JNE', 'RCL', 'RCR', 'CLC', 'MOVSW', 'LODS', 'STOSW', 'NOT', 'STD',
             'CMPSW', 'JPE', 'IMUL', 'IDIV', 'MUL', 'SAL', 'JE', 'LODSW', 'LODSB',
-            'MOVSB', 'JA', 'DIV', 'JCXZ', 'NEGHL', 'ADR', 'CLI', 'STI',
+            'MOVSB', 'JA', 'DIV', 'JCXZ', 'NEGHL', 'ADR', 'CLI', 'STI', 'LEA',
         }
 
     def _is_macro(self, token):
