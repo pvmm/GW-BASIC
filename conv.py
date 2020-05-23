@@ -1067,6 +1067,8 @@ class PasmoWriter:
         op1, op2 = token['operands']
         if {op1, op2} == {'DX', 'BX'}:
             return 'EX DE, HL'
+        if {op1, op2} == {'AL', 'AH'}:
+            return 'LD C\', A\n\tLD A, B\'\n\tLD B\', C\''
         raise SyntaxError("Only DX and BX can be exchanged (trying %s, %s)" % (op1, op2))
 
     def _is_ptr_read_through_bx(self, op):
