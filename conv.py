@@ -1023,7 +1023,7 @@ class PasmoWriter:
 
     def _gen_instruction_sahf(self, token):
         assert len(token['operands']) == 0
-        return 'LD A, F'
+        return 'LD F, A'
 
     def _gen_instruction_cmc(self, token):
         assert len(token['operands']) == 0
