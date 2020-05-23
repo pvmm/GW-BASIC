@@ -897,16 +897,19 @@ class PasmoWriter:
 
         return 'LD %s' % ', '.join(str(op) for op in operands)
 
-    def _gen_instruction_add(self, token):
+    def _gen_instruction_add(self, token, z80='ADD'):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
         if op1 == 'AL' and self._is_ptr_read_through_bx(op2):
-            return 'ADD A, (HL)'
+            return '%s A, (HL)' % z80
         if op1 in self.regmap:
             if op2 in self.regmap:
-                return 'ADD %s, %s' % (self.regmap[op1], self.regmap[op2])
-            return 'ADD %s, %s' % (self.regmap[op1], ' '.join(self._flatten(op2)))
-        raise SyntaxError("Don't know how to generate ADD: %s, %s" % (op1, op2))
+                return '%s %s, %s' % (z80, self.regmap[op1], self.regmap[op2])
+            return '%s %s, %s' % (z80, self.regmap[op1], ' '.join(self._flatten(op2)))
+        raise SyntaxError("Don't know how to generate %s: %s, %s" % (z80, op1, op2))
+
+    def _gen_instruction_adc(self, token):
+        return self._gen_instruction_add(token, 'ADC')
 
     def _gen_instruction_inc(self, token):
         return 'INC %s' % self.regmap[token['operands'][0]]
