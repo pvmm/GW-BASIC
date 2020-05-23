@@ -454,7 +454,10 @@ class Parser:
         comment = None
         while True:
             token = self._must_next("Expecting operands for %s" % instruction)
-            if token['type'] in ('token', 'number', 'string'):
+            if token['type'] == 'token':
+                for tok in token['value'].split(','):
+                    operands.append(tok)
+            elif token['type'] in ('number', 'string'):
                 operands.append(token['value'])
             elif token['type'] == 'comment':
                 comment = token['value']
