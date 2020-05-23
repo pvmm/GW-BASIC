@@ -863,15 +863,18 @@ class PasmoWriter:
     def _flatten(self, ops):
         def flatten(to_flatten):
             out = []
-            for op in to_flatten:
-                if isinstance(op, tuple):
-                    out.extend(flatten(op))
-                elif isinstance(op, str):
-                    out.append(op)
-                elif isinstance(op, int):
-                    out.append(str(op))
-                else:
-                    raise SyntaxError("Unknown type to flatten! %s" % op)
+            if isinstance(to_flatten, int):
+                out.append(str(to_flatten))
+            else:
+                for op in to_flatten:
+                    if isinstance(op, tuple):
+                        out.extend(flatten(op))
+                    elif isinstance(op, str):
+                        out.append(op)
+                    elif isinstance(op, int):
+                        out.append(str(op))
+                    else:
+                        raise SyntaxError("Unknown type to flatten! %s" % op)
             return out
         return flatten(ops)
 
@@ -1086,7 +1089,7 @@ class PasmoWriter:
             if self._is_ptr_read_through_bx(op2):
                 return 'AND (HL)'
             if len(op2) == 2 and op2[0] == 'LOW':
-                return 'AND %s' % op2[1]
+                return 'AND %s' % ' '.join(self._flatten(op2[1]))
         raise SyntaxError("Don't know how to generate AND with ops %s, %s" % (op1, op2))
 
     def _gen_instruction_sub(self, token, z80='SUB'):
