@@ -1211,6 +1211,13 @@ class PasmoWriter:
         equ = '\t%s equ %s' % (token['identifier'], ' '.join(token['attrs']))
         return '%s ; %s' % (equ, token['comment']) if token['comment'] else equ
 
+    def _gen_if(self, token):
+        return 'IF %s' % ' '.join(token['cond'])
+
+    def _gen_end_if(self, token):
+        return 'END IF'
+
+
 if __name__ == '__main__':
     lexer = Lexer(sys.stdin)
     parser = Parser(lexer)
