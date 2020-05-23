@@ -796,15 +796,25 @@ class PasmoWriter:
 
     def __init__(self, parser):
         self.parser = parser
+        self.ignore_count = 0
 
     def lines(self):
         try:
             for token in self.parser.parse():
+                if self.ignore_count:
+                    self.ignore_count -= 1
+                    continue
+                if self._is_xthl(token):
+                    self.ignore_count = 2 # Ignore XCHG SI, BX / PUSH SI
+                    token = {'type': 'instruction', 'op': 'xthl', 'operands': [], 'comment': token['comment']}
                 line = getattr(self, '_gen_' + token['type'])(token)
                 if line is not None:
                     yield line
         except AttributeError:
             raise SyntaxError("Don't know how to generate token of type %s for Pasmo: %s" % (token['type'], token))
+
+    def _is_xthl(self, token):
+        return token['type'] == 'instruction' and (token['op'], token['operands']) == ('POP', ('SI',))
 
     def _gen_comment(self, token):
         return '\n'.join('; %s' % line for line in token['value'].split('\n'))
@@ -1055,16 +1065,6 @@ class PasmoWriter:
         op1, op2 = token['operands']
         if {op1, op2} == {'DX', 'BX'}:
             return 'EX DE, HL'
-        if {op1, op2} == {'SI', 'BX'}:
-            # This is used to implement 8085's XTHL, which is EX (SP), HL in Z80.  The 8086
-            # code needs a few more instructions here and we can only convert one instruction
-            # at a time with this code, so maybe we'll need some kind of peephole optimizer
-            # in the future, or parse the whole file at once and pattern match
-            #		POP SI / XCHG SI, BX / PUSH SI
-            # So that it's essentially just one
-            #		EX (SP), HL
-            # In Z80.
-            return 'PUSH HL\n\tEX (SP), IY\n\tPOP HL'
         raise SyntaxError("Only DX and BX can be exchanged (trying %s, %s)" % (op1, op2))
 
     def _is_ptr_read_through_bx(self, op):
@@ -1106,6 +1106,10 @@ class PasmoWriter:
     def _gen_instruction_stosb(self, token):
         assert len(token['operands']) == 0
         return 'LD (IX), A'
+
+    def _gen_instruction_xthl(self, token):
+        assert len(token['operands']) == 0
+        return 'EX (SP), HL'
 
     def _gen_instruction(self, token):
         op = token['op']
