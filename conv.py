@@ -850,20 +850,6 @@ class PasmoWriter:
     def _gen_label(self, token):
         return '%s:' % token['identifier']
 
-    def _gen_instruction_mov(self, token):
-        operands = []
-        for op in token['operands']:
-            if op in self.regmap:
-                operands.append(self.regmap[op])
-            elif isinstance(op, tuple):
-                if op[0] == 'BYTE' and op[1][0] == 'PTR' and op[1][1][0] == '[':
-                    operands.append(self.regmap[op[1][1][1:-1]])
-                else:
-                    operands.append(' '.join(op))
-            else:
-                operands.append(op)
-        return 'LD %s' % ', '.join(operands)
-
     def _flatten(self, ops):
         def flatten(to_flatten):
             out = []
@@ -876,6 +862,24 @@ class PasmoWriter:
                     raise SyntaxError("Unknown type to flatten!")
             return out
         return flatten(ops)
+
+    def _gen_instruction_mov(self, token):
+        operands = []
+        for op in token['operands']:
+            if op in self.regmap:
+                operands.append(self.regmap[op])
+            elif isinstance(op, tuple):
+                if op[0] == 'BYTE' and op[1][0] == 'PTR':
+                    op = op[1][1][1:-1]
+                    if op[0] == '[':
+                        operands.append(self.regmap[op])
+                    else:
+                        operands.append('(%s)' % op)
+                else:
+                    operands.append(' '.join(self._flatten(op)))
+            else:
+                operands.append(op)
+        return 'LD %s' % ', '.join(operands)
 
     def _gen_instruction_add(self, token):
         assert len(token['operands']) == 2
@@ -894,6 +898,11 @@ class PasmoWriter:
             return 'CP %s' % self.regmap[op2]
         if op1 == 'AL':
             return 'CP %s' % ' '.join(self._flatten(op2))
+        if op1 == 'BX':
+            reg = self.regmap[op2]
+            return ('OR A\n' + \
+                    '\tSBC HL, %s\n' + \
+                    '\tADD HL, %s\n') % (reg, reg)
         raise SyntaxError("Don't know how to generate CMP: %s" % token)
 
     def _gen_instruction_jnz(self, token):
@@ -930,28 +939,51 @@ class PasmoWriter:
     def _gen_instruction_push(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
-        if len(op) != 2 and op[1] != 'X':
+        if op[1] != 'X':
+            raise SyntaxError("Only 16-bit registers can be pushed")
+        return 'PUSH %s' % self.regmap[op]
+
+    def _gen_instruction_pop(self, token):
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
+        if op[1] != 'X':
             raise SyntaxError("Only 16-bit registers can be pushed")
         return 'PUSH %s' % self.regmap[op]
 
     def _gen_instruction_or(self, token):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
+        if op1[1] == 'AL' and op2[1] == 'L' and op2 in self.regmap:
+            return 'OR %s' % self.regmap[op2]
         if op1 == op2:
-            return 'NOP'
+            return 'OR A' # NOP, but clear C/N/P/V flags
         raise SyntaxError("Don't know how to generate an OR with these yet: %s, %s" % (op1, op2))
 
     def _gen_instruction_xchg(self, token):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
-        if (op1, op2) == ('DX', 'BX') or (op1, op2) == ('BX', 'DX'):
+        if {op1, op2} == {'DX', 'BX'}:
             return 'EX DE, HL'
         raise SyntaxError("Only DX and BX can be exchanged")
+
+    def _gen_instruction_and(self, token):
+        assert len(token['operands']) == 2
+        op1, op2 = token['operands']
+        if op1 == 'AL' and op2 in self.regmap:
+            return 'AND %s' % self.regmap[op2]
+        raise SyntaxError("Don't know how to generate AND with ops %s, %s" % (op1, op2))
+
+    def _gen_instruction_xor(self, token):
+        assert len(token['operands']) == 2
+        op1, op2 = token['operands']
+        if op1 == 'AL' and op2 in self.regmap:
+            return 'XOR %s' % self.regmap[op2]
+        raise SyntaxError("Don't know how to generate AND with ops %s, %s" % (op1, op2))
 
     def _gen_instruction(self, token):
         op = token['op']
         instr = getattr(self, '_gen_instruction_' + op.lower())(token)
-        return '\t%s ; %s' % (instr, token['comment']) if token['comment'] else '\t' + instr
+        return '\t%s\t\t; %s' % (instr, token['comment']) if token['comment'] else '\t' + instr
 
     def _gen_macro_call(self, token):
         args = []
