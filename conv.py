@@ -857,9 +857,8 @@ class PasmoWriter:
         return '\tinclude %s' % token['filename']
 
     def _gen_title(self, token):
-        return ('\n;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n' + \
-                ';; %s\n' + \
-                ';;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n') % token['value']
+        header = ';' * (len(token['value']) + 6)
+        return '\n%s\n;; %s ;;\n%s\n' % (header, token['value'], header)
 
     def _gen_subtitle(self, token):
         return '\n;;; %s ;;;\n' % token['value']
