@@ -850,9 +850,108 @@ class PasmoWriter:
     def _gen_label(self, token):
         return '%s:' % token['identifier']
 
+    def _gen_instruction_mov(self, token):
+        operands = []
+        for op in token['operands']:
+            if op in self.regmap:
+                operands.append(self.regmap[op])
+            elif isinstance(op, tuple):
+                if op[0] == 'BYTE' and op[1][0] == 'PTR' and op[1][1][0] == '[':
+                    operands.append(self.regmap[op[1][1][1:-1]])
+                else:
+                    operands.append(' '.join(op))
+            else:
+                operands.append(op)
+        return 'LD %s' % ', '.join(operands)
+
+    def _flatten(self, ops):
+        def flatten(to_flatten):
+            out = []
+            for op in to_flatten:
+                if isinstance(op, tuple):
+                    out.extend(flatten(op))
+                elif isinstance(op, str):
+                    out.append(op)
+                else:
+                    raise SyntaxError("Unknown type to flatten!")
+            return out
+        return flatten(ops)
+
+    def _gen_instruction_add(self, token):
+        assert len(token['operands']) == 2
+        op1, op2 = token['operands']
+        op1 = self.regmap[op1]
+        op2 = self.regmap[op2]
+        return 'ADD %s, %s' % (op1, op2)
+
+    def _gen_instruction_inc(self, token):
+        return 'INC %s' % self.regmap[token['operands'][0]]
+
+    def _gen_instruction_cmp(self, token):
+        assert len(token['operands']) == 2
+        op1, op2 = token['operands']
+        if op1 == 'AL' and op2 in self.regmap:
+            return 'CP %s' % self.regmap[op2]
+        if op1 == 'AL':
+            return 'CP %s' % ' '.join(self._flatten(op2))
+        raise SyntaxError("Don't know how to generate CMP: %s" % token)
+
+    def _gen_instruction_jnz(self, token):
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
+        if op[0] == 'SHORT':
+            op = op[1]
+        if op in self.regmap:
+            raise SyntaxError("Unsupported JNZ to %s" % op)
+        return 'JP NZ, %s' % op
+
+    def _gen_instruction_jmp(self, token):
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
+        if op[0] == 'SHORT':
+            op = op[1]
+        if op in self.regmap:
+            raise SyntaxError("Unsupported JMP to %s" % op)
+        return 'JP %s' % op
+
+    def _gen_instruction_jz(self, token):
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
+        if op[0] == 'SHORT':
+            op = op[1]
+        if op in self.regmap:
+            raise SyntaxError("Unsupported JMP to %s" % op)
+        return 'JP Z, %s' % op
+
+    def _gen_instruction_ret(self, token):
+        assert len(token['operands']) == 0
+        return 'RET'
+
+    def _gen_instruction_push(self, token):
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
+        if len(op) != 2 and op[1] != 'X':
+            raise SyntaxError("Only 16-bit registers can be pushed")
+        return 'PUSH %s' % self.regmap[op]
+
+    def _gen_instruction_or(self, token):
+        assert len(token['operands']) == 2
+        op1, op2 = token['operands']
+        if op1 == op2:
+            return 'NOP'
+        raise SyntaxError("Don't know how to generate an OR with these yet: %s, %s" % (op1, op2))
+
+    def _gen_instruction_xchg(self, token):
+        assert len(token['operands']) == 2
+        op1, op2 = token['operands']
+        if (op1, op2) == ('DX', 'BX') or (op1, op2) == ('BX', 'DX'):
+            return 'EX DE, HL'
+        raise SyntaxError("Only DX and BX can be exchanged")
+
     def _gen_instruction(self, token):
-        instr = '\t%s %s' % (token['op'], ', '.join(token['operands']))
-        return '%s ; %s' % (instr, token['comment']) if token['comment'] else instr
+        op = token['op']
+        instr = getattr(self, '_gen_instruction_' + op.lower())(token)
+        return '\t%s ; %s' % (instr, token['comment']) if token['comment'] else '\t' + instr
 
     def _gen_macro_call(self, token):
         args = []
