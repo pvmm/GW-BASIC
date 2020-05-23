@@ -1127,6 +1127,18 @@ class PasmoWriter:
                 return 'RR (HL)'
         raise SyntaxError("Don't know how to generate ROR with op %s, %s" % (op1, op2))
 
+    def _gen_instruction_rol(self, token):
+        assert len(token['operands']) == 2
+        op1, op2 = token['operands']
+        if op2 == 1:
+            if op1 == 'AL':
+                return 'RLA'
+            if not self._is_16bit_register(op1) and op1 in self.regmap:
+                return 'RL %s' % self.regmap[op]
+            if op1 == '[BX]':
+                return 'RL (HL)'
+        raise SyntaxError("Don't know how to generate ROL with op %s, %s" % (op1, op2))
+
     def _gen_instruction(self, token):
         op = token['op']
         instr = getattr(self, '_gen_instruction_' + op.lower())(token)
