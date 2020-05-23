@@ -503,6 +503,7 @@ class Parser:
         return self._parse_data('dw', token)
 
     def _parse_label_def(self, token):
+        self._next() # Eat LABEL
         identifier = token['value']
         attrs = []
         comment = None
