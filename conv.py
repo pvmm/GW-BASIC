@@ -1111,6 +1111,18 @@ class PasmoWriter:
         assert len(token['operands']) == 0
         return 'EX (SP), HL'
 
+    def _gen_instruction_ror(self, token):
+        assert len(token['operands']) == 2
+        op1, op2 = token['operands']
+        if op2 == 1:
+            if op1 == 'AL':
+                return 'RRA'
+            if not self._is_16bit_register(op1) and op1 in self.regmap:
+                return 'RR %s' % self.regmap[op]
+            if op1 == '[BX]':
+                return 'RR (HL)'
+        raise SyntaxError("Don't know how to generate ROR with op %s, %s" % (op1, op2))
+
     def _gen_instruction(self, token):
         op = token['op']
         instr = getattr(self, '_gen_instruction_' + op.lower())(token)
