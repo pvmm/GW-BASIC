@@ -285,6 +285,7 @@ class Parser:
         self.in_dseg = False
         self.forc_counter = 0
         self.macro_args = deque()
+        self.radix = 10
 
     def parse(self):
         def queue():
@@ -329,6 +330,7 @@ class Parser:
     def _parse_directive_radix(self):
         token = self._must_next_type('number', "Expecting radix number")
         self._emit({'type': 'directive_radix', 'value': token['value']})
+        self.radix = int(token['value'])
         return self._parse_asm
 
     def _parse_directive_xlist(self):
