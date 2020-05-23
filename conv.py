@@ -863,6 +863,9 @@ class PasmoWriter:
             return out
         return flatten(ops)
 
+    def _is_16bit_reg(self, reg):
+        return reg[1] == 'X' or reg == 'SI' or reg == 'DI'
+
     def _gen_instruction_mov(self, token):
         operands = []
         for op in token['operands']:
@@ -870,10 +873,10 @@ class PasmoWriter:
                 operands.append(self.regmap[op])
             elif isinstance(op, tuple):
                 if op[0] == 'BYTE' and op[1][0] == 'PTR':
-                    op = op[1][1][1:-1]
-                    if op[0] == '[':
-                        operands.append(self.regmap[op])
-                    else:
+                    op = op[1][1]
+                    if op[0] == '[' and op[1:-1] in self.regmap:
+                        operands.append('(%s)' % self.regmap[op[1:-1]])
+                    elif op not in self.regmap:
                         operands.append('(%s)' % op)
                 else:
                     operands.append(' '.join(self._flatten(op)))
@@ -884,9 +887,11 @@ class PasmoWriter:
     def _gen_instruction_add(self, token):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
-        op1 = self.regmap[op1]
-        op2 = self.regmap[op2]
-        return 'ADD %s, %s' % (op1, op2)
+        if op1 == 'AL' and self._is_ptr_read_through_bx(op2):
+            return 'ADD A, (HL)'
+        if op1 in self.regmap and op2 in self.regmap:
+            return 'ADD %s, %s' % (self.regmap[op1], self.regmap[op2])
+        raise SyntaxError("Don't know how to generate ADD: %s, %s" % (op1, op2))
 
     def _gen_instruction_inc(self, token):
         return 'INC %s' % self.regmap[token['operands'][0]]
@@ -939,39 +944,91 @@ class PasmoWriter:
     def _gen_instruction_push(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
-        if op[1] != 'X':
-            raise SyntaxError("Only 16-bit registers can be pushed")
-        return 'PUSH %s' % self.regmap[op]
+        if self._is_16bit_reg(op):
+            return 'PUSH %s' % self.regmap[op]
+        raise SyntaxError("Only 16-bit registers can be pushed (trying %s)" % op)
 
     def _gen_instruction_pop(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
-        if op[1] != 'X':
-            raise SyntaxError("Only 16-bit registers can be pushed")
-        return 'PUSH %s' % self.regmap[op]
+        if self._is_16bit_reg(op):
+            return 'PUSH %s' % self.regmap[op]
+        raise SyntaxError("Only 16-bit registers can be popped (trying %s)" % op)
 
     def _gen_instruction_or(self, token):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
-        if op1[1] == 'AL' and op2[1] == 'L' and op2 in self.regmap:
+        if op1[1] == 'AL' and not self._is_16bit_reg(op2) and op2 in self.regmap:
             return 'OR %s' % self.regmap[op2]
         if op1 == op2:
             return 'OR A' # NOP, but clear C/N/P/V flags
         raise SyntaxError("Don't know how to generate an OR with these yet: %s, %s" % (op1, op2))
+
+    def _gen_instruction_dec(self, token):
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
+        if self._is_ptr_read_through_bx(op):
+            return 'DEC (HL)'
+        if op in self.regmap:
+            return 'DEC %s' % self.regmap[op]
+        raise SyntaxError("Don't know how to generate DEC with arg %s" % op)
+
+    def _gen_instruction_call(self, token):
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
+        if op.isalpha():
+            return 'CALL %s' % op
+        raise SyntaxError("Don't know how to generate CALL with arg %s" % op)
+
+    def _gen_instruction_jae(self, token):
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
+        if len(op) == 1:
+            return 'JP NC, %s' % op[0]
+        return 'JP NC, %s' % self._flatten(op)[-1]
+
+    def _gen_instruction_jb(self, token):
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
+        if len(op) == 1:
+            return 'JP C, %s' % op[0]
+        return 'JP C, %s' % self._flatten(op)[-1]
 
     def _gen_instruction_xchg(self, token):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
         if {op1, op2} == {'DX', 'BX'}:
             return 'EX DE, HL'
-        raise SyntaxError("Only DX and BX can be exchanged")
+        if {op1, op2} == {'SI', 'BX'}:
+            # This is used to implement 8085's XTHL, which is EX (SP), HL in Z80.  The 8086
+            # code needs a few more instructions here and we can only convert one instruction
+            # at a time with this code, so maybe we'll need some kind of peephole optimizer
+            # in the future.
+            return 'PUSH HL\n\tEX (SP), IY\n\tPOP HL'
+        raise SyntaxError("Only DX and BX can be exchanged (trying %s, %s)" % (op1, op2))
+
+    def _is_ptr_read_through_bx(self, op):
+        return op[0] == 'BYTE' and op[1][0] == 'PTR' and op[1][1] == '[BX]'
 
     def _gen_instruction_and(self, token):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
         if op1 == 'AL' and op2 in self.regmap:
             return 'AND %s' % self.regmap[op2]
+        if op1 == 'AL' and self._is_ptr_read_through_bx(op2):
+            return 'AND (HL)'
         raise SyntaxError("Don't know how to generate AND with ops %s, %s" % (op1, op2))
+
+    def _gen_instruction_sub(self, token):
+        assert len(token['operands']) == 2
+        op1, op2 = token['operands']
+        if op1 == 'AL' and op2 in self.regmap:
+            return 'SUB %s' % self.regmap[op2]
+        if op1 == 'AL' and self._is_ptr_read_through_bx(op2):
+            return 'SUB (HL)'
+        if op1 == 'AL':
+            return 'SUB %s' % ' '.join(self._flatten(op2))
+        raise SyntaxError("Don't know how to generate SUB with ops %s, %s" % (op1, op2))
 
     def _gen_instruction_xor(self, token):
         assert len(token['operands']) == 2
