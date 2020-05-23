@@ -877,6 +877,10 @@ class PasmoWriter:
     def _gen_label_def(self, token):
         return '%s: ; %s' % (token['identifier'], ' '.join(token['attrs']))
 
+    def _gen_equ(self, token):
+        equ = '\t%s equ %s' % (token['identifier'], ' '.join(token['attrs']))
+        return '%s ; %s' % (equ, token['comment']) if token['comment'] else equ
+
 if __name__ == '__main__':
     lexer = Lexer(sys.stdin)
     parser = Parser(lexer)
