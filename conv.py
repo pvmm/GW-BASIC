@@ -613,12 +613,19 @@ class Parser:
     def _parse_macro(self, token):
         self._next() # Eat MACRO
         identifier = token['value']
-        args = self._peek()
-        if args['type'] == 'token':
-            args = args['value'].split(',')
-            self._next() # Eat args
-        else:
-            args = []
+        args = []
+        while True:
+            token = self._next()
+            if token is None:
+                break
+            if token['type'] == 'newline':
+                break
+            if token['type'] == 'comma':
+                continue
+            if token['type'] == 'token':
+                args.append(token['value'])
+            else:
+                return self._error("Unexpected token type: %s" % token['type'])
         self.macro_args.append(args)
         self._emit({'type': 'macro', 'identifier': identifier, 'args': args})
         return self._parse_asm
@@ -1214,9 +1221,20 @@ class PasmoWriter:
     def _gen_if(self, token):
         return 'IF %s' % ' '.join(token['cond'])
 
+    def _gen_ifdef(self, token):
+        return 'IFDEF %s' % ' '.join(token['cond'])
+
     def _gen_end_if(self, token):
         return 'END IF'
 
+    def _gen_macro(self, token):
+        return '%s MACRO %s' % (token['identifier'], ', '.join(token['args']))
+
+    def _gen_end_macro(self, token):
+        return 'ENDM'
+
+    def _gen_echo(self, token):
+        return ';;;; Debug message: %s' % ' '.join(token['value'] for token in token['msg'])
 
 if __name__ == '__main__':
     lexer = Lexer(sys.stdin)
