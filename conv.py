@@ -968,7 +968,7 @@ class PasmoWriter:
         op = token['operands'][0]
         if self._is_16bit_reg(op):
             if op != 'AX':
-                return 'PUSH %s' % self.regmap[op]
+                return 'POP %s' % self.regmap[op]
             return 'POP BC\'\n\tLD A, C\''
         raise SyntaxError("Only 16-bit registers can be popped (trying %s)" % op)
 
