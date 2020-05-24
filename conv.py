@@ -619,6 +619,30 @@ class Parser:
                     return self._parse_asm
                 break
 
+        if operands in ((185,), (186,)):
+            if comment:
+                self._emit({'type': 'comment', 'value': comment})
+                comment = None
+            dbs = []
+            while len(dbs) != 2:
+                peek = self._peek()
+                if peek['type'] == 'newline':
+                    self._next()
+                    continue
+                if peek['type'] == 'comment':
+                    self._next()
+                    comment = peek['value']
+                    continue
+                if peek['type'] == 'db':
+                    self._next()
+                    dbs.append(peek['value'])
+                    continue
+                raise SyntaxError("Unexpected token found while parsing INS86 macro: %s" % peek)
+            op1 = 'CX' if operands[0] == 185 else 'DX'
+            op2 = dbs[0], dbs[1]
+            self._emit({'type': 'instruction', 'op': 'movi', 'operands': [op1, op2], 'comment': comment})
+            return self._parse_asm
+
         debug = []
         for op in operands:
             if isinstance(op, int): debug.append('%02x' % op)
