@@ -1361,7 +1361,7 @@ class PasmoWriter:
         return 'ENDM'
 
     def _gen_echo(self, token):
-        return ';;;; Debug message: %s' % ' '.join(token['value'] for token in token['msg'])
+        return '\t.WARNING %s' % ' '.join(token['value'] for token in token['msg'])
 
 if __name__ == '__main__':
     lexer = Lexer(sys.stdin)
