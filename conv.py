@@ -707,6 +707,10 @@ class Parser:
             self._emit({'type': 'instruction', 'op': 'jae', 'operands': [operands[1]], 'comment': comment})
             return self._parse_asm
 
+        if operands == (254, 198):
+            self._emit({'type': 'instruction', 'op': 'inc', 'operands': ['DH'], 'comment': comment})
+            return self._parse_asm
+
         debug = []
         for op in operands:
             if isinstance(op, int): debug.append('%02x' % op)
