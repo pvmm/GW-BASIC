@@ -571,6 +571,10 @@ class Parser:
             self._emit({'type': 'instruction', 'op': 'xor', 'operands': ['AH', 'AH'], 'comment': comment})
             return self._parse_asm
 
+        if operands == (209, 235):
+            self._emit({'type': 'instruction', 'op': 'shr', 'operands': ['BX', 1], 'comment': comment})
+            return self._parse_asm
+
         if operands == (139, 240):
             self._emit({'type': 'instruction', 'op': 'mov', 'operands': ['SI', 'AX'], 'comment': comment})
             return self._parse_asm
@@ -1354,6 +1358,13 @@ class PasmoWriter:
 
     def _gen_instruction_test(self, token):
         return '; TEST %s' % token
+
+    def _gen_instruction_shr(self, token):
+        assert len(token['operands']) == 2
+        op1, op2 = token['operands']
+        if op2 == 1 and op1 == 'BX':
+            return 'SRL H\n\tRR L'
+        raise SyntaxError("Don't know how to generate SHR %s, %s" % (op1, op2))
 
     def _gen_instruction(self, token):
         op = token['op']
