@@ -500,7 +500,7 @@ class Parser:
             if op[0] == '"' and op[-1] == '"':
                 return is_expr(op[1:-1])
             for c in op:
-                if not c.isalnum() and not c in '+-$':
+                if not c.isalnum() and not c in '+-$*':
                     return False
             return True
         if all(is_expr(op) for op in operand):
