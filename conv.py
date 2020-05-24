@@ -232,14 +232,14 @@ class Lexer:
                 self._emit_token('token')
                 return self._lexer_asm
 
-    def _lexer_string(self, end_char):
+    def _lexer_string(self, end_char, token_type='string'):
         while True:
             c = self._next()
             if c is None:
                 return self._error('EOF')
 
             if c == end_char:
-                self._emit_token('string')
+                self._emit_token(token_type)
                 return self._lexer_asm
 
     def _lexer_string_double(self):
@@ -247,6 +247,9 @@ class Lexer:
 
     def _lexer_string_single(self):
         return self._lexer_string('\'')
+
+    def _lexer_angle(self):
+        return self._lexer_string('>', token_type='token')
 
     def _lexer_asm(self):
         while True:
@@ -283,6 +286,9 @@ class Lexer:
 
             if c == '"':
                 return self._lexer_string_double
+
+            if c == '<':
+                return self._lexer_angle
 
 class Parser:
     def __init__(self, lexer):
@@ -466,7 +472,7 @@ class Parser:
         return token['value'] in {
             'INS86', 'ACRLF', 'DO_EXT', 'HLFHL', 'HLFDE', 'NEGDE', 'POPR', 'UN_DEF',
             'MOVRI', 'T', 'Q', 'QF', 'DERMAK', '?Z0', 'ADD_EXT', 'DEF_MAC', 'M', 'R',
-            'R2', '?&S', 'EXPAND_MAC', 'CALLOS', 'DUMY', 'ADR',
+            'R2', '?&S', 'EXPAND_MAC', 'CALLOS', 'DUMY', 'ADR', 'DC',
 
             # FIXME: add_ext macro in BINTRP.H references this, but it's parsed incorrectly
             '?I'
@@ -744,6 +750,27 @@ class Parser:
         self._emit({'type': typ.lower(), 'cond': cond, 'comment': comment})
         return self._parse_asm
 
+    def _parse_ifdif(self):
+        ops = []
+        comment = None
+        while True:
+            token = self._next()
+            if token['type'] in ('number', 'token', 'string'):
+                ops.append(token['value'])
+            elif token['type'] == 'comment':
+                comment = token['value']
+                break
+            elif token['type'] == 'comma':
+                continue
+            elif token['type'] == 'newline':
+                break
+            else:
+                return self._error("Unexpected token type %s" % token['type'])
+        if len(ops) != 2:
+            return self._error("IFDIF requires 2 arguments")
+        self._emit({'type': 'ifdif', 'ops': ops, 'comment': comment})
+        return self._parse_asm
+
     def _parse_echo(self):
         msg = []
         while True:
@@ -776,11 +803,13 @@ class Parser:
             token = self._next()
             if token['type'] == 'newline':
                 break
+            if token['type'] == 'comma':
+                continue
             if token['type'] == 'comment':
                 comment = token['value']
                 break
             if token['type'] != 'token':
-                return self._error("Expecting token")
+                return self._error("Expecting token, got %s" % token['type'])
             args.append(token)
         self._emit({'type': 'forc', 'args': args, 'comment': comment})
         return self._parse_asm
@@ -861,6 +890,8 @@ class Parser:
                     return self._parse_asm
                 if typ in ('IF', 'IFE', 'IFDEF', 'IFNDEF'):
                     return self._parse_if(typ)
+                if typ == 'IFDIF':
+                    return self._parse_ifdif
                 if typ == 'IF1': # Hack!
                     self.token_queue.appendleft({'type': 'number', 'value': '1'})
                     return self._parse_if('IF')
@@ -1367,8 +1398,21 @@ class PasmoWriter:
     def _gen_end_macro(self, token):
         return 'ENDM'
 
+    def _gen_end_forc(self, token):
+        return 'ENDM'
+
     def _gen_echo(self, token):
         return '\t.WARNING %s' % ' '.join(token['value'] for token in token['msg'])
+
+    def _gen_forc(self, token):
+        assert len(token['args']) == 2
+        op1, op2 = token['args']
+        return '\tIRP %s, %s' % (op1['value'], op2['value'])
+
+    def _gen_ifdif(self, token):
+        assert len(token['ops']) == 2
+        op1, op2 = token['ops']
+        return '\tIF %s != %s' % (op1, op2)
 
 if __name__ == '__main__':
     lexer = Lexer(sys.stdin)
