@@ -527,6 +527,90 @@ class Parser:
         self._emit({'type': 'instruction', 'op': instruction, 'operands': tuple(operands), 'comment': comment})
         return self._parse_asm
 
+    def _parse_macro_ins86(self, arguments, comment):
+        operands = []
+        for ops in arguments:
+            for op in ops:
+                if op['type'] == 'number':
+                    if op['value'].isdigit(): # Arguments to this macro are always in octal
+                        operands.append(int(op['value'], 8))
+                    else:
+                        raise SyntaxError("Unknown radix for INS86 numeric argument")
+                elif op['type'] in ('token', 'string'):
+                    operands.append(op['value'])
+                else:
+                    raise SyntaxError("Invalid argument to INS86 macro")
+
+        operands = tuple(operands)
+
+        if operands == (6,):
+            self._emit({'type': 'instruction', 'op': 'push', 'operands': ['ES'], 'comment': comment})
+            return self._parse_asm
+
+        if operands == (7,):
+            self._emit({'type': 'instruction', 'op': 'pop', 'operands': ['ES'], 'comment': comment})
+            return self._parse_asm
+
+        if operands in ((46,), (38,)): # CS:/ES: prefixes, useless for Z80
+            if comment:
+                self._emit({'type': 'comment', 'value': comment})
+            return self._parse_asm
+
+        if operands == (139, 242, 46, 172):
+            self._emit({'type': 'instruction', 'op': 'mov', 'operands': ['SI', 'DX'], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'lodsb', 'operands': ['AL', '[SI]'], 'comment': None})
+            return self._parse_asm
+
+        if operands == (50, 228):
+            self._emit({'type': 'instruction', 'op': 'xor', 'operands': ['AH', 'AH'], 'comment': comment})
+            return self._parse_asm
+
+        if operands == (139, 240):
+            self._emit({'type': 'instruction', 'op': 'mov', 'operands': ['SI', 'AX'], 'comment': comment})
+            return self._parse_asm
+
+        if operands[:2] == (142, 6) and len(operands) == 3:
+            self._emit({'type': 'instruction', 'op': 'mov', 'operands': ['ES', operands[-1]], 'comment': comment})
+            return self._parse_asm
+
+        if operands[:2] == (255, 180) and len(operands) == 3:
+            self._emit({'type': 'instruction', 'op': 'push', 'operands': [operands[-1]], 'comment': comment})
+            return self._parse_asm
+
+        if operands[:2] == (137, 22) and len(operands) == 3:
+            self._emit({'type': 'instruction', 'op': 'mov', 'operands': [operands[-1], 'DX'], 'comment': comment})
+            return self._parse_asm
+
+        if operands[:2] == (137, 38) and len(operands) == 3:
+            self._emit({'type': 'instruction', 'op': 'mov', 'operands': [operands[-1], 'SP'], 'comment': comment})
+            return self._parse_asm
+
+        if operands[:2] == (246, 6) and len(operands) == 3:
+            if comment:
+                self._emit({'type': 'comment', 'value': comment})
+                comment = None
+            while True:
+                peek = self._peek()
+                if peek['type'] == 'newline':
+                    self._next()
+                    continue
+                if peek['type'] == 'comment':
+                    self._next()
+                    comment = peek['value']
+                    continue
+                if peek['type'] == 'db':
+                    self._next()
+                    op = peek['value']
+                    self._emit({'type': 'instruction', 'op': 'test', 'operands': [operands[-1], op], 'comment': comment})
+                    return self._parse_asm
+                break
+
+        debug = []
+        for op in operands:
+            if isinstance(op, int): debug.append('%02x' % op)
+            else: debug.append(' %s ' % op)
+        raise SyntaxError("Unknown arguments to INS86 macro: %s    %s" % (''.join(debug), operands))
+
     def _parse_macro_call(self, token):
         macro = token['value']
         peek = self._peek()
@@ -553,6 +637,10 @@ class Parser:
                 return self._error("Unexpected token: %s" % token)
         if cur_operand:
             operands.append(cur_operand)
+
+        if macro == 'INS86':
+            return self._parse_macro_ins86(operands, comment)
+
         self._emit({'type': 'macro_call', 'identifier': macro, 'args': operands, 'comment': comment})
         return self._parse_asm
 
@@ -885,7 +973,7 @@ class PasmoWriter:
         return flatten(ops)
 
     def _is_16bit_reg(self, reg):
-        return reg[1] == 'X' or reg == 'SI' or reg == 'DI'
+        return reg[1] == 'X' or reg == 'SI' or reg == 'DI' or reg == 'ES'
 
     def _gen_instruction_mov(self, token):
         operands = []
@@ -971,15 +1059,20 @@ class PasmoWriter:
     def _gen_instruction_push(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
+        if op == 'ES':
+            return None
         if self._is_16bit_reg(op):
             if op != 'AX':
                 return 'PUSH %s' % self.regmap[op]
             return 'LD C\', A\n\tPUSH BC\''
-        raise SyntaxError("Only 16-bit registers can be pushed (trying %s)" % op)
+        # FIXME: check if op is a dword label first!
+        return 'PUSH HL\n\tLD HL, (%s)\n\tEX (SP), HL' % op
 
     def _gen_instruction_pop(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
+        if op == 'ES':
+            return None
         if self._is_16bit_reg(op):
             if op != 'AX':
                 return 'POP %s' % self.regmap[op]
@@ -1119,7 +1212,9 @@ class PasmoWriter:
         op1, op2 = token['operands']
         if op1 == 'AL' and op2 in self.regmap:
             return 'XOR %s' % self.regmap[op2]
-        raise SyntaxError("Don't know how to generate AND with ops %s, %s" % (op1, op2))
+        if (op1, op2) == ('AH', 'AH'):
+            return 'PUSH AF\n\tXOR A\n\tLD B\', 0\n\tPOP AF'
+        raise SyntaxError("Don't know how to generate XOR with ops %s, %s" % (op1, op2))
 
     def _gen_instruction_stosb(self, token):
         assert len(token['operands']) == 0
