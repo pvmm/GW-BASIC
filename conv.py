@@ -715,11 +715,15 @@ class Parser:
         self._next() # Eat MACRO
         identifier = token['value']
         args = []
+        comment = None
         while True:
             token = self._next()
             if token is None:
                 break
             if token['type'] == 'newline':
+                break
+            if token['type'] == 'comment':
+                comment = token['value']
                 break
             if token['type'] == 'comma':
                 continue
@@ -728,7 +732,7 @@ class Parser:
             else:
                 return self._error("Unexpected token type: %s" % token['type'])
         self.macro_args.append(args)
-        self._emit({'type': 'macro', 'identifier': identifier, 'args': args})
+        self._emit({'type': 'macro', 'identifier': identifier, 'args': args, 'comment': comment})
         return self._parse_asm
 
     def _parse_if(self, typ):
@@ -1393,7 +1397,8 @@ class PasmoWriter:
         return 'ENDIF'
 
     def _gen_macro(self, token):
-        return '%s MACRO %s' % (token['identifier'], ', '.join(token['args']))
+        macro = '%s MACRO %s' % (token['identifier'], ', '.join(token['args']))
+        return '%s ; %s' % (macro, token['comment']) if token['comment'] else macro
 
     def _gen_end_macro(self, token):
         return 'ENDM'
