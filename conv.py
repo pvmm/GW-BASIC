@@ -1344,6 +1344,10 @@ class PasmoWriter:
             return 'XOR %s' % self.regmap[op2]
         if (op1, op2) == ('AH', 'AH'):
             return 'PUSH AF\n\tXOR A\n\tLD B\', 0\n\tPOP AF'
+        if (op1, op2) == ('SI', 'SI'):
+            return 'PUSH A\n\tXOR A\n\tXOR IYH\n\tXOR IYL\n\tPOP A'
+        if (op1, op2) == ('DI', 'DI'):
+            return 'PUSH A\n\tXOR A\n\tXOR IXH\n\tXOR IXL\n\tPOP A'
         raise SyntaxError("Don't know how to generate XOR with ops %s, %s" % (op1, op2))
 
     def _gen_instruction_stosb(self, token):
