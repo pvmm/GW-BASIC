@@ -563,11 +563,11 @@ class Parser:
         operands = tuple(operands)
 
         if operands == (6,):
-            self._emit({'type': 'instruction', 'op': 'push', 'operands': ['ES'], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'push', 'operands': ('ES',), 'comment': comment})
             return self._parse_asm
 
         if operands == (7,):
-            self._emit({'type': 'instruction', 'op': 'pop', 'operands': ['ES'], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'pop', 'operands': ('ES',), 'comment': comment})
             return self._parse_asm
 
         if operands in ((46,), (38,)): # CS:/ES: prefixes, useless for Z80
@@ -576,40 +576,40 @@ class Parser:
             return self._parse_asm
 
         if operands == (139, 242, 46, 172):
-            self._emit({'type': 'instruction', 'op': 'mov', 'operands': ['SI', 'DX'], 'comment': comment})
-            self._emit({'type': 'instruction', 'op': 'lodsb', 'operands': ['AL', '[SI]'], 'comment': None})
+            self._emit({'type': 'instruction', 'op': 'mov', 'operands': ('SI', 'DX'), 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'lodsb', 'operands': ('AL', '[SI]'), 'comment': None})
             return self._parse_asm
 
         if operands == (50, 228):
-            self._emit({'type': 'instruction', 'op': 'xor', 'operands': ['AH', 'AH'], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'xor', 'operands': ('AH', 'AH'), 'comment': comment})
             return self._parse_asm
 
         if operands == (57, 23):
-            self._emit({'type': 'instruction', 'op': 'cmp', 'operands': ['[BX]', 'DX'], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'cmp', 'operands': ('[BX]', 'DX'), 'comment': comment})
             return self._parse_asm
 
         if operands == (209, 235):
-            self._emit({'type': 'instruction', 'op': 'shr', 'operands': ['BX', 1], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'shr', 'operands': ('BX', 1), 'comment': comment})
             return self._parse_asm
 
         if operands == (139, 240):
-            self._emit({'type': 'instruction', 'op': 'mov', 'operands': ['SI', 'AX'], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'mov', 'operands': ('SI', 'AX'), 'comment': comment})
             return self._parse_asm
 
         if operands[:2] == (142, 6) and len(operands) == 3:
-            self._emit({'type': 'instruction', 'op': 'mov', 'operands': ['ES', operands[-1]], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'mov', 'operands': ('ES', operands[-1]), 'comment': comment})
             return self._parse_asm
 
         if operands[:2] == (255, 180) and len(operands) == 3:
-            self._emit({'type': 'instruction', 'op': 'push', 'operands': [operands[-1]], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'push', 'operands': (operands[-1],), 'comment': comment})
             return self._parse_asm
 
         if operands[:2] == (137, 22) and len(operands) == 3:
-            self._emit({'type': 'instruction', 'op': 'mov', 'operands': [operands[-1], 'DX'], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'mov', 'operands': (operands[-1], 'DX'), 'comment': comment})
             return self._parse_asm
 
         if operands[:2] == (137, 38) and len(operands) == 3:
-            self._emit({'type': 'instruction', 'op': 'mov', 'operands': [operands[-1], 'SP'], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'mov', 'operands': (operands[-1], 'SP'), 'comment': comment})
             return self._parse_asm
 
         if operands[:2] == (246, 6) and len(operands) == 3:
@@ -628,7 +628,7 @@ class Parser:
                 if peek['type'] == 'db':
                     self._next()
                     op = peek['value']
-                    self._emit({'type': 'instruction', 'op': 'test', 'operands': [operands[-1], op], 'comment': comment})
+                    self._emit({'type': 'instruction', 'op': 'test', 'operands': (operands[-1], op), 'comment': comment})
                     return self._parse_asm
                 break
 
@@ -653,31 +653,31 @@ class Parser:
                 raise SyntaxError("Unexpected token found while parsing INS86 macro: %s" % peek)
             op1 = 'CX' if operands[0] == 185 else 'DX'
             op2 = dbs[0], dbs[1]
-            self._emit({'type': 'instruction', 'op': 'movi', 'operands': [op1, op2], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'movi', 'operands': (op1, op2), 'comment': comment})
             return self._parse_asm
 
         if operands == (209, 234):
-            self._emit({'type': 'instruction', 'op': 'shr', 'operands': ['DX', 1], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'shr', 'operands': ('DX', 1), 'comment': comment})
             return self._parse_asm
 
         if operands == (209, 233):
-            self._emit({'type': 'instruction', 'op': 'shr', 'operands': ['BX', 1], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'shr', 'operands': ('BX', 1), 'comment': comment})
             return self._parse_asm
 
         if operands == (247, 218):
-            self._emit({'type': 'instruction', 'op': 'neg', 'operands': ['DX'], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'neg', 'operands': ('DX',), 'comment': comment})
             return self._parse_asm
 
         if operands == (247, 219):
-            self._emit({'type': 'instruction', 'op': 'neg', 'operands': ['BX'], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'neg', 'operands': ('BX',), 'comment': comment})
             return self._parse_asm
 
         if operands == (247, 226):
-            self._emit({'type': 'instruction', 'op': 'mul', 'operands': ['DX'], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'mul', 'operands': ('DX',), 'comment': comment})
             return self._parse_asm
 
         if operands == (138, 242):
-            self._emit({'type': 'instruction', 'op': 'mov', 'operands': ['DH', 'DL'], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'mov', 'operands': ('DH', 'DL'), 'comment': comment})
             return self._parse_asm
 
         if operands == (5,):
@@ -700,23 +700,23 @@ class Parser:
                     continue
                 raise SyntaxError("Unexpected token found while parsing INS86 macro: %s" % peek)
             op = self._parse_byte_from_db(dbs[1]) << 8 | self._parse_byte_from_db(dbs[0])
-            self._emit({'type': 'instruction', 'op': 'add', 'operands': ['AX', op], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'add', 'operands': ('AX', op), 'comment': comment})
             return self._parse_asm
 
         if operands[0] == 115 and len(operands) == 2:
-            self._emit({'type': 'instruction', 'op': 'jae', 'operands': [operands[1]], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'jae', 'operands': (operands[1],), 'comment': comment})
             return self._parse_asm
 
         if operands == (254, 198):
-            self._emit({'type': 'instruction', 'op': 'inc', 'operands': ['DH'], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'inc', 'operands': ('DH',), 'comment': comment})
             return self._parse_asm
 
         if operands == (138, 212):
-            self._emit({'type': 'instruction', 'op': 'mov', 'operands': ['DL', 'AH'], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'mov', 'operands': ('DL', 'AH'), 'comment': comment})
             return self._parse_asm
 
         if operands[:2] == (57, 30) and len(operands) == 3:
-            self._emit({'type': 'instruction', 'op': 'cmp', 'operands': [operands[2], 'BX'], 'comment': comment})
+            self._emit({'type': 'instruction', 'op': 'cmp', 'operands': (operands[2], 'BX'), 'comment': comment})
             return self._parse_asm
 
         if operands[:2] == (255, 54) and len(operands) == 3:
