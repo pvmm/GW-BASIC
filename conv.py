@@ -703,6 +703,10 @@ class Parser:
             self._emit({'type': 'instruction', 'op': 'add', 'operands': ['AX', op], 'comment': comment})
             return self._parse_asm
 
+        if operands[0] == 115 and len(operands) == 2:
+            self._emit({'type': 'instruction', 'op': 'jae', 'operands': [operands[1]], 'comment': comment})
+            return self._parse_asm
+
         debug = []
         for op in operands:
             if isinstance(op, int): debug.append('%02x' % op)
@@ -1302,6 +1306,11 @@ class PasmoWriter:
     def _gen_instruction_jae(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
+        if isinstance(op, int):
+            if op >= -128 and op < 127:
+                # FIXME: is this correct? The offset here is relative to the 8086
+                # instructions, not Z80...
+                return 'JR NC, %d' % op
         if len(op) == 1:
             return 'JP NC, %s' % op[0]
         if len(op) == 2 and op[0] == 'SHORT':
