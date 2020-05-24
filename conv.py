@@ -1113,29 +1113,29 @@ class PasmoWriter:
     def _gen_instruction_jnz(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
-        if op[0] == 'SHORT':
-            op = op[1]
-        if op in self.regmap:
-            raise SyntaxError("Unsupported JNZ to %s" % op)
-        return 'JP NZ, %s' % op
+        if isinstance(op, str):
+            return 'JP NZ, %s' % op[0]
+        if len(op) == 2 and op[0] == 'SHORT':
+            return 'JR NZ, %s' % op[1]
+        raise SyntaxError("Unsupported JNZ to %s" % op)
 
     def _gen_instruction_jmp(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
-        if op[0] == 'SHORT':
-            op = op[1]
-        if op in self.regmap:
-            raise SyntaxError("Unsupported JMP to %s" % op)
-        return 'JP %s' % op
+        if isinstance(op, str):
+            return 'JP %s' % op[0]
+        if len(op) == 2 and op[0] == 'SHORT':
+            return 'JR %s' % op[1]
+        raise SyntaxError("Unsupported JMP to %s" % op)
 
     def _gen_instruction_jz(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
-        if op[0] == 'SHORT':
-            op = op[1]
-        if op in self.regmap:
-            raise SyntaxError("Unsupported JMP to %s" % op)
-        return 'JP Z, %s' % op
+        if isinstance(op, str):
+            return 'JP Z, %s' % op[0]
+        if len(op) == 2 and op[0] == 'SHORT':
+            return 'JR Z, %s' % op[1]
+        raise SyntaxError("Unsupported JZ to %s" % op)
 
     def _gen_instruction_ret(self, token):
         assert len(token['operands']) == 0
@@ -1208,7 +1208,9 @@ class PasmoWriter:
         op = token['operands'][0]
         if len(op) == 1:
             return 'JP NC, %s' % op[0]
-        return 'JP NC, %s' % self._flatten(op)[-1]
+        if len(op) == 2 and op[0] == 'SHORT':
+            return 'JR NC, %s' % op[1]
+        raise SyntaxError("I can't make this jump!")
 
     def _gen_instruction_js(self, token):
         assert len(token['operands']) == 1
@@ -1229,7 +1231,9 @@ class PasmoWriter:
         op = token['operands'][0]
         if len(op) == 1:
             return 'JP C, %s' % op[0]
-        return 'JP C, %s' % self._flatten(op)[-1]
+        if len(op) == 2 and op[0] == 'SHORT':
+            return 'JR C, %s' % op[1]
+        raise SyntaxError("I can't make this jump!")
 
     def _gen_instruction_jnae(self, token):
         return self._gen_instruction_jb(token)
