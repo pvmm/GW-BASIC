@@ -1453,6 +1453,13 @@ class PasmoWriter:
             return 'SRL D\n\tRR E'
         raise SyntaxError("Don't know how to generate SHR %s, %s" % (op1, op2))
 
+    def _gen_instruction_not(self, token):
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
+        if op == 'AL':
+            return 'CPL'
+        raise SyntaxError("Don't know how to generate NOT %s" % op)
+
     def _gen_instruction(self, token):
         op = token['op']
         instr = getattr(self, '_gen_instruction_' + op.lower())(token)
