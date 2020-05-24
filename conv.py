@@ -737,6 +737,10 @@ class Parser:
             self._emit({'type': 'instruction', 'op': 'or', 'operands': ('BX', 'DX'), 'comment': comment})
             return self._parse_asm
 
+        if operands == (35, 218):
+            self._emit({'type': 'instruction', 'op': 'and', 'operands': ('BX', 'DX'), 'comment': comment})
+            return self._parse_asm
+
         debug = []
         for op in operands:
             if isinstance(op, int): debug.append('%02x' % op)
@@ -1428,6 +1432,15 @@ class PasmoWriter:
                 return 'AND (HL)'
             if len(op2) == 2 and op2[0] == 'LOW':
                 return 'AND %s' % ' '.join(self._flatten(op2[1]))
+        if {op1, op2} == {'BX', 'DX'}:
+            return ('PUSH A\n\t' +
+                    'LD A, H\n\t' +
+                    'AND D\n\t' +
+                    'LD H, A\n\t' +
+                    'LD A, L\n\t' +
+                    'AND E\n\t' +
+                    'LD L, A\n\t' +
+                    'POP A')
         raise SyntaxError("Don't know how to generate AND with ops %s, %s" % (op1, op2))
 
     def _gen_instruction_sub(self, token, z80='SUB'):
