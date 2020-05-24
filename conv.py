@@ -733,6 +733,10 @@ class Parser:
             self._emit({'type': 'instruction', 'op': 'not', 'operands': ('BX',), 'comment': comment})
             return self._parse_asm
 
+        if operands == (11, 218):
+            self._emit({'type': 'instruction', 'op': 'or', 'operands': ('BX', 'DX'), 'comment': comment})
+            return self._parse_asm
+
         debug = []
         for op in operands:
             if isinstance(op, int): debug.append('%02x' % op)
@@ -1313,6 +1317,15 @@ class PasmoWriter:
                 return 'OR %s' % op2[1]
         if op1 == op2:
             return 'OR A' # NOP, but clear C/N/P/V flags
+        if {op1, op2} == {'BX', 'DX'}:
+            return ('PUSH A\n\t' +
+                    'LD A, H\n\t' +
+                    'OR D\n\t' +
+                    'LD H, A\n\t' +
+                    'LD A, L\n\t' +
+                    'OR E\n\t' +
+                    'LD L, A\n\t' +
+                    'POP A')
         raise SyntaxError("Don't know how to generate an OR with these yet: %s, %s" % (op1, op2))
 
     def _gen_instruction_dec(self, token):
