@@ -725,6 +725,10 @@ class Parser:
             self._emit({'type': 'instruction', 'op': 'push', 'operands': (operands[2],), 'comment': comment})
             return self._parse_asm
 
+        if operands == (255, 39):
+            self._emit({'type': 'instruction', 'op': 'jmp', 'operands': ('[BX]',), 'comment': comment})
+            return self._parse_asm
+
         debug = []
         for op in operands:
             if isinstance(op, int): debug.append('%02x' % op)
@@ -1240,8 +1244,10 @@ class PasmoWriter:
     def _gen_instruction_jmp(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
+        if op == '[BX]':
+            return 'JP (HL)'
         if isinstance(op, str):
-            return 'JP %s' % op[0]
+            return 'JP %s' % op
         if len(op) == 2 and op[0] == 'SHORT':
             return 'JR %s' % op[1]
         raise SyntaxError("Unsupported JMP to %s" % op)
