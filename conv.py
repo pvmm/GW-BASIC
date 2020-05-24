@@ -465,7 +465,7 @@ class Parser:
             'LOOP', 'TEST', 'CBW', 'NEG', 'JLE', 'JO', 'JGE', 'JL', 'MOVS', 'JPO',
             'JNE', 'RCL', 'RCR', 'CLC', 'MOVSW', 'LODS', 'STOSW', 'NOT', 'STD',
             'CMPSW', 'JPE', 'IMUL', 'IDIV', 'MUL', 'SAL', 'JE', 'LODSW', 'LODSB',
-            'MOVSB', 'JA', 'DIV', 'JCXZ', 'CLI', 'STI', 'LEA',
+            'MOVSB', 'JA', 'DIV', 'JCXZ', 'CLI', 'STI', 'LEA', 'JP',
         }
 
     def _is_macro(self, token):
@@ -1348,6 +1348,9 @@ class PasmoWriter:
         if len(op) == 1:
             return 'JP P, %s' % op[0]
         return 'JP P, %s' % self._flatten(op)[-1]
+
+    def _gen_instruction_jp(self, token):
+        return self._gen_instruction_jns(token)
 
     def _gen_instruction_jb(self, token):
         assert len(token['operands']) == 1
