@@ -1341,7 +1341,7 @@ class PasmoWriter:
         return 'IFDEF %s' % ' '.join(token['cond'])
 
     def _gen_end_if(self, token):
-        return 'END IF'
+        return 'ENDIF'
 
     def _gen_macro(self, token):
         return '%s MACRO %s' % (token['identifier'], ', '.join(token['args']))
