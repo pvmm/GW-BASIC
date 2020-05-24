@@ -1317,7 +1317,7 @@ class PasmoWriter:
     def _gen_instruction_call(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
-        if op.isalnum():
+        if op.isalnum() or (op[0] == '$' and op[1:].isalnum()):
             return 'CALL %s' % op
         raise SyntaxError("Don't know how to generate CALL with arg %s" % op)
 
