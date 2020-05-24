@@ -1419,6 +1419,14 @@ class PasmoWriter:
         op1, op2 = token['ops']
         return '\tIF %s != %s' % (op1, op2)
 
+    def _gen_ife(self, token):
+        assert len(token['cond']) == 2
+        op1, op2 = token['cond']
+        return '\tIF %s = %s' % (op1, op2)
+
+    def _gen_else(self, token):
+        return '\tELSE'
+
 if __name__ == '__main__':
     lexer = Lexer(sys.stdin)
     parser = Parser(lexer)
