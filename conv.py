@@ -611,6 +611,11 @@ class Parser:
             else: debug.append(' %s ' % op)
         raise SyntaxError("Unknown arguments to INS86 macro: %s    %s" % (''.join(debug), operands))
 
+    def _parse_macro_popr(comment):
+        self._emit({'type': 'instruction', 'op': 'pop', 'operands': ['CX'], 'comment': comment})
+        self._emit({'type': 'instruction', 'op': 'pop', 'operands': ['DX'], 'comment': None})
+        return self._parse_asm
+
     def _parse_macro_call(self, token):
         macro = token['value']
         peek = self._peek()
@@ -640,6 +645,8 @@ class Parser:
 
         if macro == 'INS86':
             return self._parse_macro_ins86(operands, comment)
+        if macro == 'POPR':
+            return self._parse_macro_popr(comment)
 
         self._emit({'type': 'macro_call', 'identifier': macro, 'args': operands, 'comment': comment})
         return self._parse_asm
@@ -799,7 +806,7 @@ class Parser:
     def _is_useless_macro(self, name):
         useless_macros = {
             'LDIR', 'LDDR', 'DJNZ', 'FSIGN', 'PUSHM', 'SYNCHK', 'OUTCHR', 'CHRGET',
-            'COMPAR', 'PUSHR', 'INST', 'GETYPE', 'INS86',
+            'COMPAR', 'PUSHR', 'INST', 'GETYPE', 'INS86', 'POPR',
         }
         if name in useless_macros:
             peek = self._peek()
