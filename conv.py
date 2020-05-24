@@ -465,14 +465,14 @@ class Parser:
             'LOOP', 'TEST', 'CBW', 'NEG', 'JLE', 'JO', 'JGE', 'JL', 'MOVS', 'JPO',
             'JNE', 'RCL', 'RCR', 'CLC', 'MOVSW', 'LODS', 'STOSW', 'NOT', 'STD',
             'CMPSW', 'JPE', 'IMUL', 'IDIV', 'MUL', 'SAL', 'JE', 'LODSW', 'LODSB',
-            'MOVSB', 'JA', 'DIV', 'JCXZ', 'NEGHL', 'CLI', 'STI', 'LEA',
+            'MOVSB', 'JA', 'DIV', 'JCXZ', 'CLI', 'STI', 'LEA',
         }
 
     def _is_macro(self, token):
         return token['value'] in {
             'INS86', 'ACRLF', 'DO_EXT', 'HLFHL', 'HLFDE', 'NEGDE', 'POPR', 'UN_DEF',
             'MOVRI', 'T', 'Q', 'QF', 'DERMAK', '?Z0', 'ADD_EXT', 'DEF_MAC', 'M', 'R',
-            'R2', '?&S', 'EXPAND_MAC', 'CALLOS', 'DUMY', 'ADR', 'DC',
+            'R2', '?&S', 'EXPAND_MAC', 'CALLOS', 'DUMY', 'ADR', 'DC', 'NEGHL',
 
             # FIXME: add_ext macro in BINTRP.H references this, but it's parsed incorrectly
             '?I'
