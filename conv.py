@@ -533,6 +533,19 @@ class Parser:
         self._emit({'type': 'instruction', 'op': instruction, 'operands': tuple(operands), 'comment': comment})
         return self._parse_asm
 
+    def _parse_byte_from_db(self, db):
+        try:
+            return int(db, self.radix)
+        except ValueError:
+            pass
+
+        if db[-1] == 'D':
+            return int(db[:-1], 10)
+        if db[-1] == 'H':
+            return int(db[:-1], 16)
+        if db[-1] == 'O':
+            return int(db[:-1], 8)
+
     def _parse_macro_ins86(self, arguments, comment):
         operands = []
         for ops in arguments:
@@ -665,6 +678,29 @@ class Parser:
 
         if operands == (138, 242):
             self._emit({'type': 'instruction', 'op': 'mov', 'operands': ['DH', 'DL'], 'comment': comment})
+            return self._parse_asm
+
+        if operands == (5,):
+            if comment:
+                self._emit({'type': 'comment', 'value': comment})
+                comment = None
+            dbs = []
+            while len(dbs) != 2:
+                peek = self._peek()
+                if peek['type'] == 'newline':
+                    self._next()
+                    continue
+                if peek['type'] == 'comment':
+                    self._next()
+                    comment = peek['value']
+                    continue
+                if peek['type'] == 'db':
+                    self._next()
+                    dbs.append(peek['value'])
+                    continue
+                raise SyntaxError("Unexpected token found while parsing INS86 macro: %s" % peek)
+            op = self._parse_byte_from_db(dbs[1]) << 8 | self._parse_byte_from_db(dbs[0])
+            self._emit({'type': 'instruction', 'op': 'add', 'operands': ['AX', op], 'comment': comment})
             return self._parse_asm
 
         debug = []
@@ -1137,6 +1173,9 @@ class PasmoWriter:
             if op2 in self.regmap:
                 return '%s %s, %s' % (z80, self.regmap[op1], self.regmap[op2])
             return '%s %s, %s' % (z80, self.regmap[op1], ' '.join(self._flatten(op2)))
+        if op1 == 'AX' and isinstance(op2, int):
+            # FIXME: figure out what to do with usage of AX...
+            return '; ADD AX, %d' % op2
         raise SyntaxError("Don't know how to generate %s: %s, %s" % (z80, op1, op2))
 
     def _gen_instruction_adc(self, token):
