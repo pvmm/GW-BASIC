@@ -1139,8 +1139,8 @@ class PasmoWriter:
             reg = self.regmap[op2]
             if op1 == 'BX':
                 return ('OR A\n\t' + \
-                        'SBC HL, %s\n' + \
-                        'ADD HL, %s\n') % (reg, reg)
+                        'SBC HL, %s\n\t' + \
+                        'ADD HL, %s\n\t') % (reg, reg)
             if op1 == '[BX]':
                 return ('PUSH HL\n\t' + \
                         'LD HL, (HL)\n\t' + \
