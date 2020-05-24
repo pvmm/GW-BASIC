@@ -643,6 +643,22 @@ class Parser:
             self._emit({'type': 'instruction', 'op': 'movi', 'operands': [op1, op2], 'comment': comment})
             return self._parse_asm
 
+        if operands == (209, 234):
+            self._emit({'type': 'instruction', 'op': 'shr', 'operands': ['DX', 1], 'comment': comment})
+            return self._parse_asm
+
+        if operands == (209, 233):
+            self._emit({'type': 'instruction', 'op': 'shr', 'operands': ['BX', 1], 'comment': comment})
+            return self._parse_asm
+
+        if operands == (247, 218):
+            self._emit({'type': 'instruction', 'op': 'neg', 'operands': ['DX'], 'comment': comment})
+            return self._parse_asm
+
+        if operands == (247, 219):
+            self._emit({'type': 'instruction', 'op': 'neg', 'operands': ['BX'], 'comment': comment})
+            return self._parse_asm
+
         debug = []
         for op in operands:
             if isinstance(op, int): debug.append('%02x' % op)
@@ -1405,6 +1421,8 @@ class PasmoWriter:
         op1, op2 = token['operands']
         if op2 == 1 and op1 == 'BX':
             return 'SRL H\n\tRR L'
+        if op2 == 1 and op1 == 'DX':
+            return 'SRL D\n\tRR E'
         raise SyntaxError("Don't know how to generate SHR %s, %s" % (op1, op2))
 
     def _gen_instruction(self, token):
