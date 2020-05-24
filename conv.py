@@ -796,6 +796,17 @@ class Parser:
             if token['type'] == 'token' and token['value'] == 'ENDM':
                 return self._parse_asm
 
+    def _is_useless_macro(self, name):
+        useless_macros = {
+            'LDIR', 'LDDR', 'DJNZ', 'FSIGN', 'PUSHM', 'SYNCHK', 'OUTCHR', 'CHRGET',
+            'COMPAR', 'PUSHR', 'INST', 'GETYPE', 'INS86',
+        }
+        if name in useless_macros:
+            peek = self._peek()
+            if peek['type'] == 'token' and peek['value'] == 'MACRO':
+                return True
+        return False
+
     def _parse_asm(self):
         while True:
             token = self._next()
@@ -857,7 +868,7 @@ class Parser:
                     return self._parse_label(token)
                 if self._is_x86_instruction(token):
                     return self._parse_x86_instruction(token)
-                if typ in ('LDIR', 'LDDR', 'DJNZ'):
+                if self._is_useless_macro(typ):
                     self._emit({'type': 'comment', 'value': 'Stripped useless macro: %s' % typ})
                     return self._parse_strip_macro
                 if self._is_macro(token):
