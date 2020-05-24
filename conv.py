@@ -553,6 +553,8 @@ class Parser:
                 if op['type'] == 'number':
                     if op['value'].isdigit(): # Arguments to this macro are always in octal
                         operands.append(int(op['value'], 8))
+                    elif op['value'] == '+2':
+                        operands[-1] += op['value']
                     else:
                         raise SyntaxError("Unknown radix for INS86 numeric argument")
                 elif op['type'] in ('token', 'string'):
