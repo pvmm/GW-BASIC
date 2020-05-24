@@ -741,6 +741,10 @@ class Parser:
             self._emit({'type': 'instruction', 'op': 'and', 'operands': ('BX', 'DX'), 'comment': comment})
             return self._parse_asm
 
+        if operands == (51, 218):
+            self._emit({'type': 'instruction', 'op': 'xor', 'operands': ('BX', 'DX'), 'comment': comment})
+            return self._parse_asm
+
         debug = []
         for op in operands:
             if isinstance(op, int): debug.append('%02x' % op)
@@ -1475,6 +1479,15 @@ class PasmoWriter:
             return 'PUSH A\n\tXOR A\n\tXOR IYH\n\tXOR IYL\n\tPOP A'
         if (op1, op2) == ('DI', 'DI'):
             return 'PUSH A\n\tXOR A\n\tXOR IXH\n\tXOR IXL\n\tPOP A'
+        if {op1, op2} == {'BX', 'DX'}:
+            return ('PUSH A\n\t' +
+                    'LD A, H\n\t' +
+                    'XOR D\n\t' +
+                    'LD H, A\n\t' +
+                    'LD A, L\n\t' +
+                    'XOR E\n\t' +
+                    'LD L, A\n\t' +
+                    'POP A')
         raise SyntaxError("Don't know how to generate XOR with ops %s, %s" % (op1, op2))
 
     def _gen_instruction_stosb(self, token):
