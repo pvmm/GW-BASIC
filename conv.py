@@ -1139,6 +1139,7 @@ class PasmoWriter:
 
     def _gen_instruction_ret(self, token):
         assert len(token['operands']) == 0
+        # FIXME: maybe look at the code to generate other RET variants?
         return 'RET'
 
     def _gen_instruction_push(self, token):
