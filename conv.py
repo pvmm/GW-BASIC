@@ -659,6 +659,10 @@ class Parser:
             self._emit({'type': 'instruction', 'op': 'neg', 'operands': ['BX'], 'comment': comment})
             return self._parse_asm
 
+        if operands == (247, 226):
+            self._emit({'type': 'instruction', 'op': 'mul', 'operands': ['DX'], 'comment': comment})
+            return self._parse_asm
+
         debug = []
         for op in operands:
             if isinstance(op, int): debug.append('%02x' % op)
@@ -1472,6 +1476,13 @@ class PasmoWriter:
         if op == 'AL':
             return 'CPL'
         raise SyntaxError("Don't know how to generate NOT %s" % op)
+
+    def _gen_instruction_mul(self, token):
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
+        if op == 'DX':
+            return '; MUL DX'
+        raise SyntaxError("Don't know how to generate MUL %s" % op)
 
     def _gen_instruction(self, token):
         op = token['op']
