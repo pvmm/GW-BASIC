@@ -729,6 +729,10 @@ class Parser:
             self._emit({'type': 'instruction', 'op': 'jmp', 'operands': ('[BX]',), 'comment': comment})
             return self._parse_asm
 
+        if operands == (247, 211):
+            self._emit({'type': 'instruction', 'op': 'not', 'operands': ('BX',), 'comment': comment})
+            return self._parse_asm
+
         debug = []
         for op in operands:
             if isinstance(op, int): debug.append('%02x' % op)
@@ -1559,6 +1563,15 @@ class PasmoWriter:
         op = token['operands'][0]
         if op == 'AL':
             return 'CPL'
+        if op == 'BX':
+            return ('PUSH A\n\t' +
+                    'LD A, H\n\t' +
+                    'CPL\n\t' +
+                    'LD H, A\n\t' +
+                    'LD A, L\n\t' +
+                    'CPL\n\t' +
+                    'LD L, A\n\t' +
+                    'POP A')
         raise SyntaxError("Don't know how to generate NOT %s" % op)
 
     def _gen_instruction_mul(self, token):
