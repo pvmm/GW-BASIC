@@ -721,7 +721,7 @@ class Parser:
             else: debug.append(' %s ' % op)
         raise SyntaxError("Unknown arguments to INS86 macro: %s    %s" % (''.join(debug), operands))
 
-    def _parse_macro_popr(comment):
+    def _parse_macro_popr(self, comment):
         self._emit({'type': 'instruction', 'op': 'pop', 'operands': ['CX'], 'comment': comment})
         self._emit({'type': 'instruction', 'op': 'pop', 'operands': ['DX'], 'comment': None})
         return self._parse_asm
