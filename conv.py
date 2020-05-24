@@ -571,6 +571,10 @@ class Parser:
             self._emit({'type': 'instruction', 'op': 'xor', 'operands': ['AH', 'AH'], 'comment': comment})
             return self._parse_asm
 
+        if operands == (57, 23):
+            self._emit({'type': 'instruction', 'op': 'cmp', 'operands': ['[BX]', 'DX'], 'comment': comment})
+            return self._parse_asm
+
         if operands == (209, 235):
             self._emit({'type': 'instruction', 'op': 'shr', 'operands': ['BX', 1], 'comment': comment})
             return self._parse_asm
@@ -1091,11 +1095,19 @@ class PasmoWriter:
             return 'CP %s' % self.regmap[op2]
         if op1 == 'AL':
             return 'CP %s' % ' '.join(self._flatten(op2))
-        if op1 == 'BX':
+        if op2 in self.regmap:
             reg = self.regmap[op2]
-            return ('OR A\n' + \
-                    '\tSBC HL, %s\n' + \
-                    '\tADD HL, %s\n') % (reg, reg)
+            if op1 == 'BX':
+                return ('OR A\n\t' + \
+                        'SBC HL, %s\n' + \
+                        'ADD HL, %s\n') % (reg, reg)
+            if op1 == '[BX]':
+                return ('PUSH HL\n\t' + \
+                        'LD HL, (HL)\n\t' + \
+                        'OR A\n\t' + \
+                        'SBC HL, %s\n\t' + \
+                        'ADD HL, %s\n\t' + \
+                        'POP HL\n\t') % (reg, reg)
         raise SyntaxError("Don't know how to generate CMP: %s" % token)
 
     def _gen_instruction_jnz(self, token):
