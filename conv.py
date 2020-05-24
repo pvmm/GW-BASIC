@@ -1416,6 +1416,34 @@ class PasmoWriter:
     def _gen_instruction_test(self, token):
         return '; TEST %s' % token
 
+    def _gen_instruction_movi(self, token):
+        return '; MOVI %s' % token
+
+    def _gen_instruction_neg(self, token):
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
+        if op == 'AL':
+            return 'NEG'
+        if op == 'BX':
+            return ('PUSH A\n\t' +
+                    'XOR A\n\t' +
+                    'SUB L\n\t' +
+                    'LD L, A\n\t' +
+                    'SBC A, A\n\t' +
+                    'SUB H\n\t' +
+                    'LD H, A\n\t' +
+                    'POP A')
+        if op == 'DX':
+            return ('PUSH A\n\t' +
+                    'XOR A\n\t' +
+                    'SUB E\n\t' +
+                    'LD E, A\n\t' +
+                    'SBC A, A\n\t' +
+                    'SUB D\n\t' +
+                    'LD D, A\n\t' +
+                    'POP A')
+        raise SyntaxError("Don't know how to generate NEG with op %s" % op)
+
     def _gen_instruction_shr(self, token):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
