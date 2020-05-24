@@ -1294,7 +1294,7 @@ class PasmoWriter:
             if self._is_ptr_read_through_bx(op2):
                 return 'OR (HL)'
             if len(op2) == 2 and op2[0] == 'LOW':
-                return 'AND %s' % op2[1]
+                return 'OR %s' % op2[1]
         if op1 == op2:
             return 'OR A' # NOP, but clear C/N/P/V flags
         raise SyntaxError("Don't know how to generate an OR with these yet: %s, %s" % (op1, op2))
