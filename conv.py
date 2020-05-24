@@ -921,10 +921,10 @@ class PasmoWriter:
         return '\t%s=%s' % (token['symbol'], token['value'])
 
     def _gen_cseg(self, token):
-        return None
+        return '; CSEG %s (%s)' % (token['name'], 'public' if token['public'] else 'local')
 
     def _gen_assume(self, token):
-        return None
+        return '; Assuming segment %s' % token['seg']
 
     def _gen_xlist(self, token):
         return None
@@ -936,7 +936,7 @@ class PasmoWriter:
         return None
 
     def _gen_public(self, token):
-        return None
+        return '\tPUBLIC %s' % token['identifier']
 
     def _gen_sall(self, token):
         return None
@@ -1279,6 +1279,12 @@ class PasmoWriter:
             if op1 == '[BX]':
                 return 'RL (HL)'
         raise SyntaxError("Don't know how to generate ROL with op %s, %s" % (op1, op2))
+
+    def _gen_instruction_lodsb(self, token):
+        return '; LODSB %s' % token
+
+    def _gen_instruction_test(self, token):
+        return '; TEST %s' % token
 
     def _gen_instruction(self, token):
         op = token['op']
