@@ -1417,8 +1417,13 @@ class PasmoWriter:
     def _gen_instruction_xor(self, token):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
-        if op1 == 'AL' and op2 in self.regmap:
-            return 'XOR %s' % self.regmap[op2]
+        if op1 == 'AL':
+            if op2 in self.regmap:
+                return 'XOR %s' % self.regmap[op2]
+            if isinstance(op2, tuple) and op2[0] == 'LOW' and isinstance(op2[1], int):
+                op2 = op2[1]
+            if isinstance(op2, int) and 0 <= op2 <= 255:
+                return 'XOR %d' % op2
         if (op1, op2) == ('AH', 'AH'):
             return 'PUSH AF\n\tXOR A\n\tLD B\', 0\n\tPOP AF'
         if (op1, op2) == ('SI', 'SI'):
