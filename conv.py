@@ -783,6 +783,19 @@ class Parser:
         self._emit({'type': 'purge', 'identifier': token['value']})
         return self._parse_asm
 
+    def _parse_strip_macro(self):
+        macro_token_count = 0
+        while True:
+            token = self._next()
+            if token is None:
+                return self._error("Expecting ENDM")
+            if token['type'] == 'token' and token['value'] == 'MACRO':
+                macro_token_count += 1
+                if macro_token_count > 1:
+                    return self._error("Nested macros not supported for stripping")
+            if token['type'] == 'token' and token['value'] == 'ENDM':
+                return self._parse_asm
+
     def _parse_asm(self):
         while True:
             token = self._next()
@@ -807,44 +820,47 @@ class Parser:
                     return self._parse_cseg
                 if typ == 'DSEG':
                     return self._parse_dseg
-                elif typ == 'ASSUME':
+                if typ == 'ASSUME':
                     return self._parse_assume
-                elif typ == 'INCLUDE':
+                if typ == 'INCLUDE':
                     return self._parse_include
-                elif typ == 'PUBLIC':
+                if typ == 'PUBLIC':
                     return self._parse_public
-                elif typ == 'ORG':
+                if typ == 'ORG':
                     return self._parse_org
-                elif typ == 'PAGE':
+                if typ == 'PAGE':
                     continue
-                elif typ in ('%OUT', 'ECHO'):
+                if typ in ('%OUT', 'ECHO'):
                     return self._parse_echo
-                elif typ == 'END':
+                if typ == 'END':
                     break
-                elif typ == 'ENDM':
+                if typ == 'ENDM':
                     return self._parse_endm(escaping=False)
-                elif typ == '&ENDM':
+                if typ == '&ENDM':
                     return self._parse_endm(escaping=True)
-                elif typ == 'ENDIF':
+                if typ == 'ENDIF':
                     self._emit({'type': 'end_if'})
                     return self._parse_asm
-                elif typ in ('IF', 'IFE', 'IFDEF', 'IFNDEF'):
+                if typ in ('IF', 'IFE', 'IFDEF', 'IFNDEF'):
                     return self._parse_if(typ)
-                elif typ == 'IF1': # Hack!
+                if typ == 'IF1': # Hack!
                     self.token_queue.appendleft({'type': 'number', 'value': '1'})
                     return self._parse_if('IF')
-                elif typ == 'ELSE':
+                if typ == 'ELSE':
                     self._emit({'type': 'else'})
                     return self._parse_asm
-                elif typ == 'PURGE':
+                if typ == 'PURGE':
                     return self._parse_purge
-                elif typ in ('FORC', 'IRPC'):
+                if typ in ('FORC', 'IRPC'):
                     return self._parse_forc
-                elif token['value'].endswith(':'):
+                if token['value'].endswith(':'):
                     return self._parse_label(token)
-                elif self._is_x86_instruction(token):
+                if self._is_x86_instruction(token):
                     return self._parse_x86_instruction(token)
-                elif self._is_macro(token):
+                if typ in ('LDIR', 'LDDR', 'DJNZ'):
+                    self._emit({'type': 'comment', 'value': 'Stripped useless macro: %s' % typ})
+                    return self._parse_strip_macro
+                if self._is_macro(token):
                     return self._parse_macro_call(token)
                 else:
                     peek = self._peek()
