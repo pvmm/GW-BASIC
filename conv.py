@@ -1128,22 +1128,23 @@ class PasmoWriter:
 
     def __init__(self, parser):
         self.parser = parser
-        self.ignore_count = 0
 
     def lines(self):
+        ignore_count = 0
+
         try:
             for token in self.parser.parse():
-                if self.ignore_count:
+                if ignore_count:
                     if 'comment' in token and token['comment']:
                         token = {'type': 'comment', 'value': token['comment']}
                     else:
-                        self.ignore_count -= 1
+                        ignore_count -= 1
                         continue
                 elif self._is_jump_skip_ret(token):
-                    self.ignore_count = 1 # Ignore RET
+                    ignore_count = 1 # Ignore RET
                     token = {'type': 'instruction', 'op': 'ret_' + token['op'], 'operands': [], 'comment': token['comment']}
                 elif self._is_xthl(token):
-                    self.ignore_count = 2 # Ignore XCHG SI, BX / PUSH SI
+                    ignore_count = 2 # Ignore XCHG SI, BX / PUSH SI
                     token = {'type': 'instruction', 'op': 'xthl', 'operands': [], 'comment': token['comment']}
 
                 line = getattr(self, '_gen_' + token['type'])(token)
