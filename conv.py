@@ -1633,7 +1633,7 @@ class PasmoWriter:
         return '; TEST %s' % token
 
     def _gen_instruction_movi(self, token):
-        return '; MOVI %s' % token
+        return self._gen_instruction_mov(token)
 
     def _gen_instruction_neg(self, token):
         assert len(token['operands']) == 1
