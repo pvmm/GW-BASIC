@@ -1739,6 +1739,8 @@ class PasmoWriter:
     def _gen_instruction_mul(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
+        # http://cpctech.cpc-live.com/docs/mult.html has a nice algorithm
+        # for 16-bit multiplication
         if op == 'DX':
             return '; MUL DX'
         raise SyntaxError("Don't know how to generate MUL %s" % op)
