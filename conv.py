@@ -1414,11 +1414,13 @@ class PasmoWriter:
                 # FIXME: is this correct? The offset here is relative to the 8086
                 # instructions, not Z80...
                 return 'JR NC, %d' % op
+        if isinstance(op, str):
+            return 'JP NC, %s' % op[0]
         if len(op) == 1:
             return 'JP NC, %s' % op[0]
         if len(op) == 2 and op[0] == 'SHORT':
             return 'JR NC, %s' % op[1]
-        raise SyntaxError("I can't make this jump!")
+        raise SyntaxError("Can't make JAE to %s" % op)
 
     def _gen_instruction_js(self, token):
         assert len(token['operands']) == 1
