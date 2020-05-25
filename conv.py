@@ -705,6 +705,26 @@ class Parser:
             self._emit({'type': 'instruction', 'op': 'add', 'operands': ('AX', op), 'comment': comment})
             return self._parse_asm
 
+        if operands == (131, 250):
+            if comment:
+                self._emit({'type': 'comment', 'value': comment})
+                comment = None
+            op = None
+            while op is None:
+                peek = self._peek()
+                if peek['type'] == 'newline':
+                    self._next()
+                elif peek['type'] == 'comment':
+                    self._next()
+                    comment = peek['value']
+                elif peek['type'] == 'db':
+                    self._next()
+                    op = self._parse_byte_from_db(peek['value'])
+                else:
+                    raise SyntaxError("Unexpected token while parsing INS86 macro: %s" % peek)
+            self._emit({'type': 'instruction', 'op': 'cmp', 'operands': ('DX', op), 'comment': comment})
+            return self._parse_asm
+
         if operands[0] == 115 and len(operands) == 2:
             self._emit({'type': 'instruction', 'op': 'jae', 'operands': (operands[1],), 'comment': comment})
             return self._parse_asm
@@ -1233,6 +1253,15 @@ class PasmoWriter:
             return 'CP %s' % self.regmap[op2]
         if op1 == 'AL':
             return 'CP %s' % ' '.join(self._flatten(op2))
+        if op1 == 'DX' and isinstance(op2, int):
+            return ('PUSH HL\n\t' +
+                    'PUSH DE\n\t' +
+                    'LD HL, %d\n\t' +
+                    'OR A\n\t' +
+                    'SBC DE, HL\n\t' +
+                    'ADD DE, HL\n\t' +
+                    'POP DE\n\t' +
+                    'POP HL\n\t') % op2
         if op2 in self.regmap:
             reg = self.regmap[op2]
             if op1 == 'BX':
