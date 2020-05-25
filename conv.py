@@ -1663,10 +1663,9 @@ class PasmoWriter:
     def _gen_instruction_shr(self, token):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
-        if op2 == 1 and op1 == 'BX':
-            return 'SRL H\n\tRR L'
-        if op2 == 1 and op1 == 'DX':
-            return 'SRL D\n\tRR E'
+        if op2 == 1 and self._is_16bit_reg(op1):
+            op1 = self.regmap[op1]
+            return 'SRL %s\n\tRR %s' % (op1[0], op1[1])
         raise SyntaxError("Don't know how to generate SHR %s, %s" % (op1, op2))
 
     def _gen_instruction_not(self, token):
