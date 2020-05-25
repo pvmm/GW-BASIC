@@ -594,6 +594,10 @@ class Parser:
             self._emit({'type': 'instruction', 'op': 'xor', 'operands': ('AH', 'AH'), 'comment': comment})
             return self._parse_asm
 
+        if operands == (140, 218):
+            self._emit({'type': 'instruction', 'op': 'mov', 'operands': ('DX', 'DS'), 'comment': comment})
+            return self._parse_asm
+
         if operands == (57, 23):
             self._emit({'type': 'instruction', 'op': 'cmp', 'operands': ('[BX]', 'DX'), 'comment': comment})
             return self._parse_asm
