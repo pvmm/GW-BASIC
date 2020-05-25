@@ -1577,14 +1577,14 @@ class PasmoWriter:
         if (op1, op2) == ('DI', 'DI'):
             return 'PUSH A\n\tXOR A\n\tXOR IXH\n\tXOR IXL\n\tPOP A'
         if {op1, op2} == {'BX', 'DX'}:
-            return ('PUSH A\n\t' +
+            return ('EX AF, AF\'\n\t' +
                     'LD A, H\n\t' +
                     'XOR D\n\t' +
                     'LD H, A\n\t' +
                     'LD A, L\n\t' +
                     'XOR E\n\t' +
                     'LD L, A\n\t' +
-                    'POP A')
+                    'EX AF, AF\'')
         raise SyntaxError("Don't know how to generate XOR with ops %s, %s" % (op1, op2))
 
     def _gen_instruction_stosb(self, token):
