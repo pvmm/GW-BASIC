@@ -16,6 +16,7 @@ class Lexer:
         self.queue = deque()
         self.line = 1
         self.col = 1
+        self.paren_count = 0
 
     def lex(self):
         def queue():
@@ -267,6 +268,20 @@ class Lexer:
                 self._emit_token('comma')
                 continue
 
+            if c == '(':
+                self._emit_token('open_paren')
+                self.paren_count += 1
+                continue
+
+            if c == ')':
+                if self.paren_count == 0:
+                    return self._error('Closing parenthesis without an opening parenthesis')
+                self._emit_token('close_paren')
+                self.paren_count -= 1
+                if self.paren_count == 0:
+                    self._ignore()
+                    return self._lexer_asm
+
             if c.isdigit():
                 return self._lexer_number
 
@@ -472,58 +487,84 @@ class Parser:
             '?I'
         }
 
-    def _parse_x86_instruction_operand(self, operand):
-        if len(operand) == 1:
-            try:
-                return int(operand[0], self.radix)
-            except ValueError:
-                return operand[0]
+    def _valid_number_for_radix(self, num, radix):
+        if radix == 8:
+            return all('0' <= c <= '7' for c in num)
+        if radix == 10:
+            return all('0' <= c <= '9' for c in num)
+        if radix == 16:
+            hex_digits = "0123456789abcdefABCDEF"
+            return all(c in hex_digits for c in num)
+        raise SyntaxError("Unknown radix: %d" % radix)
 
-        if operand[0] in ('OFFSET', 'BYTE', 'SHORT', 'LOW', 'PTR'):
-            return (operand[0], self._parse_x86_instruction_operand(operand[1:]))
+    def _parse_x86_operand(self, operand):
+        out = []
+        skip = False
+        for i, op in enumerate(operand):
+            if skip:
+                skip = False
+                continue
+            if isinstance(op, str):
+                if i < len(operand)-1 and operand[i+1] in ('O', 'H', 'D'):
+                    skip = True
+                    radix = {'O': 8, 'H': 16, 'D': 10}[operand[i+1]]
+                else:
+                    radix = self.radix
+                if self._valid_number_for_radix(op, radix):
+                    out.append(int(op, radix))
+                else:
+                    out.append(op)
+            elif isinstance(op, list) or isinstance(op, tuple):
+                out.append(self._parse_x86_operand(op))
+            else:
+                out.append(op)
+        return out[0] if len(out) == 1 else tuple(out)
 
-        if operand[0].isdigit():
-            if operand[1] == 'H':
-                return int(operand[0], 16)
-            if operand[1] == 'D':
-                return int(operand[0], 10)
-            if operand[1] == 'O':
-                return int(operand[0], 8)
-
-        def is_expr(op):
-            if op[0] == '"' and op[-1] == '"':
-                return is_expr(op[1:-1])
-            for c in op:
-                if not c.isalnum() and not c in '+-$*':
-                    return False
-            return True
-        if all(is_expr(op) for op in operand):
-            return ''.join(operand)
-
-        return self._error("Unknown kind of operand: %s" % operand)
+    def _get_x86_operand(self, n_paren=0):
+        operand = []
+        while True:
+            peek = self._peek()
+            if peek is None:
+                break
+            elif peek['type'] in ('token', 'number', 'string'):
+                self._next()
+                operand.append(peek['value'])
+            elif peek['type'] == 'open_paren':
+                self._next()
+                operand.append(self._get_x86_operand(n_paren + 1))
+            elif peek['type'] == 'close_paren':
+                self._next()
+                if n_paren == 0:
+                    return self._error("Close parenthesis without open parenthesis")
+            elif peek['type'] in ('newline', 'comment', 'comma'):
+                break
+            else:
+                return self._error("Unexpected token: %s" % token)
+        return self._parse_x86_operand(operand)
 
     def _parse_x86_instruction(self, token):
         instruction = token['value']
         operands = []
         comment = None
-        cur_operand = []
         while True:
-            token = self._must_next("Expecting operands for %s" % instruction)
-            if token['type'] in ('token', 'number', 'string'):
-                cur_operand.append(token['value'])
-            elif token['type'] == 'comment':
-                comment = token['value']
+            peek = self._peek()
+            if peek is None:
                 break
-            elif token['type'] == 'newline':
-                break
-            elif token['type'] == 'comma':
-                operands.append(self._parse_x86_instruction_operand(cur_operand))
-                cur_operand = []
+            if peek['type'] in ('token', 'number', 'string', 'open_paren'):
+                operands.append(self._get_x86_operand())
+            elif peek['type'] == 'close_paren':
+                return self._error("Close parenthesis without open parenthesis")
+            elif peek['type'] == 'comma':
+                self._next()
                 continue
+            elif peek['type'] == 'comment':
+                self._next()
+                comment = peek['value']
+                break
+            elif peek['type'] == 'newline':
+                break
             else:
-                return self._error("Unexpected token: %s" % token)
-        if cur_operand:
-            operands.append(self._parse_x86_instruction_operand(cur_operand))
+                return self._error("Unexpected token while parsing 8086 instruction operand: %s" % token)
         self._emit({'type': 'instruction', 'op': instruction, 'operands': tuple(operands), 'comment': comment})
         return self._parse_asm
 
@@ -1216,24 +1257,6 @@ class PasmoWriter:
     def _gen_label(self, token):
         return '%s:' % token['identifier']
 
-    def _flatten(self, ops):
-        def flatten(to_flatten):
-            out = []
-            if isinstance(to_flatten, int):
-                out.append(str(to_flatten))
-            else:
-                for op in to_flatten:
-                    if isinstance(op, tuple):
-                        out.extend(flatten(op))
-                    elif isinstance(op, str):
-                        out.append(op)
-                    elif isinstance(op, int):
-                        out.append(str(op))
-                    else:
-                        raise SyntaxError("Unknown type to flatten! %s" % op)
-            return out
-        return flatten(ops)
-
     def _is_16bit_reg(self, reg):
         return reg[1] == 'X' or reg == 'SI' or reg == 'DI' or reg == 'ES'
 
@@ -1246,20 +1269,19 @@ class PasmoWriter:
         for op in token['operands']:
             if op in self.regmap:
                 operands.append(self.regmap[op])
-            elif isinstance(op, tuple):
-                if op[0] == 'BYTE' and op[1][0] == 'PTR':
-                    op = op[1][1]
-                    if op[0] == '[' and op[1:-1] in self.regmap:
-                        operands.append('(%s)' % self.regmap[op[1:-1]])
-                    elif op not in self.regmap:
-                        operands.append('(%s)' % op)
-                else:
-                    operands.append(' '.join(self._flatten(op)))
+            elif self._is_ptr_read(op):
+                op = op[2]
+                if op[0] == '[' and op[1:-1] in self.regmap:
+                    operands.append('(%s)' % self.regmap[op[1:-1]])
+                elif op not in self.regmap:
+                    operands.append('(%s)' % op)
             elif isinstance(op, str) and op[0] == '[':
                 if op[1:-1] in self.regmap:
                     operands.append('(%s)' % self.regmap[op[1:-1]])
                 else:
                     raise SyntaxError("Don't know how to generate this MOV op: %s" % op)
+            elif isinstance(op, tuple):
+                operands.append(' '.join(str(op) for op in op))
             else:
                 operands.append(op)
 
@@ -1283,7 +1305,7 @@ class PasmoWriter:
         if op1 in self.regmap:
             if op2 in self.regmap:
                 return '%s %s, %s' % (z80, self.regmap[op1], self.regmap[op2])
-            return '%s %s, %s' % (z80, self.regmap[op1], ' '.join(self._flatten(op2)))
+            return '%s %s, %s' % (z80, self.regmap[op1], ' '.join(str(op) for op in op2))
         if op1 == 'AX' and isinstance(op2, int):
             # FIXME: figure out what to do with usage of AX...
             return '; ADD AX, %d' % op2
@@ -1301,7 +1323,16 @@ class PasmoWriter:
         if op1 == 'AL' and op2 in self.regmap:
             return 'CP %s' % self.regmap[op2]
         if op1 == 'AL':
-            return 'CP %s' % ' '.join(self._flatten(op2))
+            if isinstance(op2, tuple):
+                if len(op2) >= 3 and op2[:2] == ('LOW', 'OFFSET'):
+                    op2 = ''.join(str(op) for op in op2[2:])
+                elif len(op2) >= 2 and op2[:1] == ('LOW',):
+                    op2 = ''.join(str(op) for op in op2[2:])
+                elif self._is_ptr_read_through_bx(op2):
+                    op2 = '(HL)'
+                else:
+                    raise SyntaxError("Don't know how to generate CMP AL, %s" % op2)
+            return 'CP %s' % op2
         if op1 == 'DX' and isinstance(op2, int):
             return ('PUSH HL\n\t' +
                     'PUSH DE\n\t' +
@@ -1454,14 +1485,14 @@ class PasmoWriter:
         op = token['operands'][0]
         if len(op) == 1:
             return 'JP M, %s' % op[0]
-        return 'JP M, %s' % self._flatten(op)[-1]
+        return 'JP M, %s' % ' '.join(str(op) for op in op)
 
     def _gen_instruction_jns(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
         if len(op) == 1:
             return 'JP P, %s' % op[0]
-        return 'JP P, %s' % self._flatten(op)[-1]
+        return 'JP P, %s' % ' '.join(str(op) for op in op)
 
     def _gen_instruction_jp(self, token):
         return self._gen_instruction_jns(token)
@@ -1513,7 +1544,10 @@ class PasmoWriter:
         raise SyntaxError("Don't know how to generate XCHG %s, %s" % (op1, op2))
 
     def _is_ptr_read_through_bx(self, op):
-        return op[0] == 'BYTE' and op[1][0] == 'PTR' and op[1][1] == '[BX]'
+        return op == ('BYTE', 'PTR', '[BX]')
+
+    def _is_ptr_read(self, op):
+        return isinstance(op, tuple) and len(op) == 3 and op[:2] == ('BYTE', 'PTR')
 
     def _gen_instruction_and(self, token):
         assert len(token['operands']) == 2
@@ -1523,8 +1557,7 @@ class PasmoWriter:
                 return 'AND %s' % self.regmap[op2]
             if self._is_ptr_read_through_bx(op2):
                 return 'AND (HL)'
-            if len(op2) == 2 and op2[0] == 'LOW':
-                return 'AND %s' % ' '.join(self._flatten(op2[1]))
+            return 'AND %s' % ' '.join(str(op) for op in op2)
         if {op1, op2} == {'BX', 'DX'}:
             return ('PUSH A\n\t' +
                     'LD A, H\n\t' +
@@ -1544,11 +1577,11 @@ class PasmoWriter:
                 return '%s %s' % (z80, self.regmap[op2])
             if self._is_ptr_read_through_bx(op2):
                 return '%s (HL)' % z80
-            return '%s %s' % (z80, ' '.join(self._flatten(op2)))
+            if isinstance(op2, tuple) and len(op2) >= 2 and op2[0] == 'LOW':
+                return '%s %s' % (z80, ' '.join(str(op) for op in op2[1:]))
         if op1 == 'BX' and op2 == 'DX':
             return 'SBC HL, DE'
-        if op1 == 'DL' and isinstance(op2, tuple) and op2[0] == 'BYTE' and op2[1][0] == 'PTR':
-            op2 = op2[0][1]
+        if op1 == 'DL' and self._is_ptr_read(op2):
             return ('PUSH HL\n\t' +
                     'EX AF, AF\'\n\t' +
                     'LD A, E\n\t' +
