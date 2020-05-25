@@ -1194,7 +1194,8 @@ class PasmoWriter:
         return None
 
     def _gen_extern(self, token):
-        return None
+        extern = '\tEXTERN %s:%s' % (token['identifier'], token['attr'])
+        return '%s ; %s' % (extern, token['comment']) if 'comment' in token and token['comment'] else extern
 
     def _gen_public(self, token):
         return '\tPUBLIC %s' % token['identifier']
