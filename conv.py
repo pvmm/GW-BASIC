@@ -572,6 +572,10 @@ class Parser:
             self._emit({'type': 'instruction', 'op': 'pop', 'operands': ('ES',), 'comment': comment})
             return self._parse_asm
 
+        if operands == (14,):
+            self._emit({'type': 'instruction', 'op': 'push', 'operands': ('CS',), 'comment': comment})
+            return self._parse_asm
+
         if operands in ((46,), (38,)): # CS:/ES: prefixes, useless for Z80
             if comment:
                 self._emit({'type': 'comment', 'value': comment})
