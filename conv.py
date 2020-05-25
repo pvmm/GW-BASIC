@@ -466,6 +466,7 @@ class Parser:
             'JNE', 'RCL', 'RCR', 'CLC', 'MOVSW', 'LODS', 'STOSW', 'NOT', 'STD',
             'CMPSW', 'JPE', 'IMUL', 'IDIV', 'MUL', 'SAL', 'JE', 'LODSW', 'LODSB',
             'MOVSB', 'JA', 'DIV', 'JCXZ', 'CLI', 'STI', 'LEA', 'JP', 'IN', 'OUT',
+            'INT',
         }
 
     def _is_macro(self, token):
@@ -1695,6 +1696,12 @@ class PasmoWriter:
                     'OUT (C), A\n\t' +
                     'POP BC')
         raise SyntaxError("Don't know how to generate IN %s, %s" % (op1, op2))
+
+    def _gen_instruction_int(self, token):
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
+        # FIXME: what to do here?
+        return '; INT %d' % op
 
     def _gen_instruction(self, token):
         op = token['op']
