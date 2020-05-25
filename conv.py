@@ -536,6 +536,7 @@ class Parser:
                 self._next()
                 if n_paren == 0:
                     return self._error("Close parenthesis without open parenthesis")
+                break
             elif peek['type'] in ('newline', 'comment', 'comma'):
                 break
             else:
