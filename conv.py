@@ -576,6 +576,10 @@ class Parser:
             self._emit({'type': 'instruction', 'op': 'push', 'operands': ('CS',), 'comment': comment})
             return self._parse_asm
 
+        if operands == (203,):
+            self._emit({'type': 'instruction', 'op': 'retf', 'operands': (), 'comment': comment})
+            return self._parse_asm
+
         if operands in ((46,), (38,)): # CS:/ES: prefixes, useless for Z80
             if comment:
                 self._emit({'type': 'comment', 'value': comment})
@@ -1314,6 +1318,9 @@ class PasmoWriter:
         assert len(token['operands']) == 0
         # FIXME: maybe look at the code to generate other RET variants?
         return 'RET'
+
+    def _gen_instruction_retf(self, token):
+        return self._gen_instruction_ret(token)
 
     def _gen_instruction_push(self, token):
         assert len(token['operands']) == 1
