@@ -1640,24 +1640,16 @@ class PasmoWriter:
         op = token['operands'][0]
         if op == 'AL':
             return 'NEG'
-        if op == 'BX':
+        if self._is_16bit_reg(op):
+            high, low = self.regmap[op]
             return ('EX AF, AF\'\n\t' +
                     'XOR A\n\t' +
-                    'SUB L\n\t' +
-                    'LD L, A\n\t' +
+                    'SUB %s\n\t' +
+                    'LD %s, A\n\t' +
                     'SBC A, A\n\t' +
-                    'SUB H\n\t' +
-                    'LD H, A\n\t' +
-                    'EX AF, AF\'')
-        if op == 'DX':
-            return ('EX AF, AF\'\n\t' +
-                    'XOR A\n\t' +
-                    'SUB E\n\t' +
-                    'LD E, A\n\t' +
-                    'SBC A, A\n\t' +
-                    'SUB D\n\t' +
-                    'LD D, A\n\t' +
-                    'EX AF, AF\'')
+                    'SUB %s\n\t' +
+                    'LD %s, A\n\t' +
+                    'EX AF, AF\'') % (low, low, high, high)
         raise SyntaxError("Don't know how to generate NEG with op %s" % op)
 
     def _gen_instruction_shr(self, token):
