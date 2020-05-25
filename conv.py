@@ -1514,6 +1514,15 @@ class PasmoWriter:
             return '%s %s' % (z80, ' '.join(self._flatten(op2)))
         if op1 == 'BX' and op2 == 'DX':
             return 'SBC HL, DE'
+        if op1 == 'DL' and isinstance(op2, tuple) and op2[0] == 'BYTE' and op2[1][0] == 'PTR':
+            op2 = op2[0][1]
+            return ('PUSH HL\n\t' +
+                    'EX AF, AF\'\n\t' +
+                    'LD A, E\n\t' +
+                    'LD HL, %s\n\t' +
+                    'SUB (HL)\n\t' +
+                    'EX AF, AF\'\n\t' +
+                    'POP HL') % op2
         raise SyntaxError("Don't know how to generate %s with ops %s, %s" % (z80, op1, op2))
 
     def _gen_instruction_sbb(self, token):
