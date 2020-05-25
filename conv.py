@@ -465,7 +465,7 @@ class Parser:
             'LOOP', 'TEST', 'CBW', 'NEG', 'JLE', 'JO', 'JGE', 'JL', 'MOVS', 'JPO',
             'JNE', 'RCL', 'RCR', 'CLC', 'MOVSW', 'LODS', 'STOSW', 'NOT', 'STD',
             'CMPSW', 'JPE', 'IMUL', 'IDIV', 'MUL', 'SAL', 'JE', 'LODSW', 'LODSB',
-            'MOVSB', 'JA', 'DIV', 'JCXZ', 'CLI', 'STI', 'LEA', 'JP',
+            'MOVSB', 'JA', 'DIV', 'JCXZ', 'CLI', 'STI', 'LEA', 'JP', 'IN',
         }
 
     def _is_macro(self, token):
@@ -578,6 +578,10 @@ class Parser:
 
         if operands == (203,):
             self._emit({'type': 'instruction', 'op': 'retf', 'operands': (), 'comment': comment})
+            return self._parse_asm
+
+        if operands == (236,):
+            self._emit({'type': 'instruction', 'op': 'in', 'operands': ('AL', 'DX'), 'comment': comment})
             return self._parse_asm
 
         if operands in ((46,), (38,)): # CS:/ES: prefixes, useless for Z80
@@ -1663,6 +1667,18 @@ class PasmoWriter:
         if op == 'DX':
             return '; MUL DX'
         raise SyntaxError("Don't know how to generate MUL %s" % op)
+
+    def _gen_instruction_in(self, token):
+        assert len(token['operands']) == 2
+        op1, op2 = token['operands']
+        if op1 == 'AL' and op2 == 'DX':
+            # This is not exactly equivalent, because ports in Z80 are 8-bit and in 8086
+            # they're 16-bit... so we just take the lower byte.
+            return ('PUSH BC\n\t' +
+                    'LD BC, DE\n\t' +
+                    'IN A, (C)\n\t' +
+                    'POP BC')
+        raise SyntaxError("Don't know how to generate IN %s, %s" % (op1, op2))
 
     def _gen_instruction(self, token):
         op = token['op']
