@@ -1262,6 +1262,16 @@ class PasmoWriter:
             else:
                 operands.append(op)
 
+        op0_is_index = operands[0] in {'IX', 'IY'}
+        op1_is_index = operands[1] in {'IX', 'IY'}
+        if op0_is_index != op1_is_index:
+            z1, z2 = operands
+
+            # Have to use undocumented instructions here.
+            if op0_is_index:
+                return 'LD %sH, %s\n\tLD %sL, %s' % (z1, z2[0], z1, z2[1])
+            return 'LD %s, %sH\n\tLD %sL, %s' % (z1[0], z2, z1[1], z2)
+
         return 'LD %s' % ', '.join(str(op) for op in operands)
 
     def _gen_instruction_add(self, token, z80='ADD'):
