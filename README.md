@@ -1,28 +1,32 @@
-# Microsoft GW-BASIC Interpreter Source Code
+# Port of Microsoft GW-BASIC to Z80
 
-This repo contains the original source-code for Microsoft's GW-BASIC interpreter, as of 1983.
-
-## Announcement blog
-https://devblogs.microsoft.com/commandline/microsoft-open-sources-gw-basic/
-
-## Information
-
-This repo:
-
-1. Is being released for historical reference/interest purposes, and reflects the state of the GW-BASIC interpreter source code as it was in 1983
-1. Will not be modified - please do not submit PR's or request changes
-1. Contains no build scripts, makefiles, or tools required to generate executable binaries, nor does it contain any pre-built binaries / executables
+This repo contains an ongoing port of Microsoft's GW-BASIC interpreter from 8086 to Z80.  This
+is being accomplished by writing a porting tool, named 'conv.py', which is able to convert the
+source files in the Microsoft Macro Assembler format to Z80.  This tool isn't a general purpose
+ISA conversion tool, but something tailor made for this particular code base.
 
 ## License
 
-All files within this repo are released under the [MIT (OSI) License]( https://en.wikipedia.org/wiki/MIT_License) as per the [LICENSE file](https://github.com/Microsoft/GW-BASIC/blob/master/LICENSE) stored in the root of this repo.
+All original files within this repo released by Microsoft are released under
+the [MIT (OSI) License]( https://en.wikipedia.org/wiki/MIT_License) as per
+the [LICENSE file](https://github.com/Microsoft/GW-BASIC/blob/master/LICENSE) stored in
+the root of this repo.
+
+The conversion tool, `conv.py`, is released under GNU GPL version 2.
 
 ## Contributing
 
-The source files in this repo are for historical reference and will remain read-only and unmodified in their original state. Please  **do not** send Pull Requests suggesting any modifications to the source files.  
+Pull requests to improve the converter are welcome!
 
-Further contribution guidance can be found in the [Contributor's Guide](https://github.com/Microsoft/GW-BASIC/blob/master/CONTRIBUTING.md) stored in the root of this repo.
+## Status
 
-## Code of Conduct
+A lot of the ASM files in this repo can be translated to Z80, but the generated code isn't
+perfect yet; a lot of instructions being generated are invalid and the code generator has to
+be reviewed.  Having said that, the generator is able to start and finish going through these
+files:
 
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).  For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+ * BISTRS.ASM
+ * FIVEO.ASM
+ * GWMAIN.ASM
+ * GWEVAL.ASM
+ * GENGRP.ASM
