@@ -1134,16 +1134,30 @@ class PasmoWriter:
         try:
             for token in self.parser.parse():
                 if self.ignore_count:
-                    self.ignore_count -= 1
-                    continue
-                if self._is_xthl(token):
+                    if 'comment' in token and token['comment']:
+                        token = {'type': 'comment', 'value': token['comment']}
+                    else:
+                        self.ignore_count -= 1
+                        continue
+                elif self._is_jump_skip_ret(token):
+                    self.ignore_count = 1 # Ignore RET
+                    token = {'type': 'instruction', 'op': 'ret_' + token['op'], 'operands': [], 'comment': token['comment']}
+                elif self._is_xthl(token):
                     self.ignore_count = 2 # Ignore XCHG SI, BX / PUSH SI
                     token = {'type': 'instruction', 'op': 'xthl', 'operands': [], 'comment': token['comment']}
+
                 line = getattr(self, '_gen_' + token['type'])(token)
                 if line is not None:
                     yield line
         except AttributeError:
             raise SyntaxError("Don't know how to generate token of type %s for Pasmo: %s" % (token['type'], token))
+
+    def _is_jump_skip_ret(self, token):
+        if token['type'] != 'instruction':
+            return False
+        if token['op'] not in {'JZ', 'JNZ', 'JNAE', 'JNB', 'JS'}:
+            return False
+        return token['operands'] == (('SHORT', '$+3'),)
 
     def _is_xthl(self, token):
         return token['type'] == 'instruction' and (token['op'], token['operands']) == ('POP', ('SI',))
@@ -1706,6 +1720,24 @@ class PasmoWriter:
         op = token['operands'][0]
         # FIXME: what to do here?
         return '; INT %d' % op
+
+    def _gen_instruction_ret_jz(self, token):
+        return 'RET Z'
+
+    def _gen_instruction_ret_jnz(self, token):
+        return 'RET NZ'
+
+    def _gen_instruction_ret_jnb(self, token):
+        return 'RET NC'
+
+    def _gen_instruction_ret_js(self, token):
+        return 'RET M'
+
+    def _gen_instruction_ret_jb(self, token):
+        return 'RET C'
+
+    def _gen_instruction_ret_jnae(self, token):
+        return self._gen_instruction_ret_jb(token)
 
     def _gen_instruction(self, token):
         op = token['op']
