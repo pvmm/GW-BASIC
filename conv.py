@@ -1675,14 +1675,14 @@ class PasmoWriter:
         if op == 'AL':
             return 'CPL'
         if op == 'BX':
-            return ('PUSH A\n\t' +
+            return ('EX AF, AF\'\n\t' +
                     'LD A, H\n\t' +
                     'CPL\n\t' +
                     'LD H, A\n\t' +
                     'LD A, L\n\t' +
                     'CPL\n\t' +
                     'LD L, A\n\t' +
-                    'POP A')
+                    'EX AF, AF\'')
         raise SyntaxError("Don't know how to generate NOT %s" % op)
 
     def _gen_instruction_mul(self, token):
