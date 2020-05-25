@@ -1855,9 +1855,9 @@ class PasmoWriter:
         return '\tIF %s != %s' % (op1, op2)
 
     def _gen_ife(self, token):
-        assert len(token['cond']) == 2
-        op1, op2 = token['cond']
-        return '\tIF %s = %s' % (op1, op2)
+        assert len(token['cond']) == 1
+        op = token['cond'][0]
+        return '\tIF %s' % op
 
     def _gen_else(self, token):
         return '\tELSE'
