@@ -1114,6 +1114,39 @@ class Parser:
 
             return self._error("Don't know how to parse token %s" % token)
 
+class Transformer:
+    def __init__(self, parser):
+        self.parser = parser
+
+    def transform(self):
+        ignore_count = 0
+
+        for token in self.parser.parse():
+            if ignore_count:
+                if 'comment' in token and token['comment']:
+                    token = {'type': 'comment', 'value': token['comment']}
+                else:
+                    ignore_count -= 1
+                    continue
+            elif self._is_jump_skip_ret(token):
+                ignore_count = 1 # Ignore RET
+                token = {'type': 'instruction', 'op': 'ret_' + token['op'], 'operands': [], 'comment': token['comment']}
+            elif self._is_xthl(token):
+                ignore_count = 2 # Ignore XCHG SI, BX / PUSH SI
+                token = {'type': 'instruction', 'op': 'xthl', 'operands': [], 'comment': token['comment']}
+
+            yield token
+
+    def _is_jump_skip_ret(self, token):
+        if token['type'] != 'instruction':
+            return False
+        if token['op'] not in {'JZ', 'JNZ', 'JNAE', 'JNB', 'JS'}:
+            return False
+        return token['operands'] == (('SHORT', '$+3'),)
+
+    def _is_xthl(self, token):
+        return token['type'] == 'instruction' and (token['op'], token['operands']) == ('POP', ('SI',))
+
 class PasmoWriter:
     regmap = {
         'BX': 'HL', 'BH': 'H', 'BL': 'L',
@@ -1126,42 +1159,18 @@ class PasmoWriter:
         # registers because the code uses AX as a 16-bit register extensively
     }
 
-    def __init__(self, parser):
-        self.parser = parser
+    def __init__(self, transformer):
+        self.transformer = transformer
 
     def lines(self):
-        ignore_count = 0
+        for token in self.transformer.transform():
+            generator = '_gen_' + token['type']
+            if not hasattr(self, generator):
+                raise SyntaxError("Don't know how to generate token of type %s (%s)" % (token['type'], token))
 
-        try:
-            for token in self.parser.parse():
-                if ignore_count:
-                    if 'comment' in token and token['comment']:
-                        token = {'type': 'comment', 'value': token['comment']}
-                    else:
-                        ignore_count -= 1
-                        continue
-                elif self._is_jump_skip_ret(token):
-                    ignore_count = 1 # Ignore RET
-                    token = {'type': 'instruction', 'op': 'ret_' + token['op'], 'operands': [], 'comment': token['comment']}
-                elif self._is_xthl(token):
-                    ignore_count = 2 # Ignore XCHG SI, BX / PUSH SI
-                    token = {'type': 'instruction', 'op': 'xthl', 'operands': [], 'comment': token['comment']}
-
-                line = getattr(self, '_gen_' + token['type'])(token)
-                if line is not None:
-                    yield line
-        except AttributeError:
-            raise SyntaxError("Don't know how to generate token of type %s for Pasmo: %s" % (token['type'], token))
-
-    def _is_jump_skip_ret(self, token):
-        if token['type'] != 'instruction':
-            return False
-        if token['op'] not in {'JZ', 'JNZ', 'JNAE', 'JNB', 'JS'}:
-            return False
-        return token['operands'] == (('SHORT', '$+3'),)
-
-    def _is_xthl(self, token):
-        return token['type'] == 'instruction' and (token['op'], token['operands']) == ('POP', ('SI',))
+            line = getattr(self, generator)(token)
+            if line is not None:
+                yield line
 
     def _gen_comment(self, token):
         return '\n'.join('; %s' % line for line in token['value'].split('\n'))
@@ -1812,7 +1821,8 @@ class PasmoWriter:
 if __name__ == '__main__':
     lexer = Lexer(sys.stdin)
     parser = Parser(lexer)
-    writer = PasmoWriter(parser)
+    transformer = Transformer(parser)
+    writer = PasmoWriter(transformer)
 
     try:
         for line in writer.lines():
