@@ -474,6 +474,7 @@ class Parser:
             'INS86', 'ACRLF', 'DO_EXT', 'HLFHL', 'HLFDE', 'NEGDE', 'POPR', 'UN_DEF',
             'MOVRI', 'T', 'Q', 'QF', 'DERMAK', '?Z0', 'ADD_EXT', 'DEF_MAC', 'M', 'R',
             'R2', '?&S', 'EXPAND_MAC', 'CALLOS', 'DUMY', 'ADR', 'DC', 'NEGHL',
+            'CPMXIO', 'DOSIO',
 
             # FIXME: add_ext macro in BINTRP.H references this, but it's parsed incorrectly
             '?I'
