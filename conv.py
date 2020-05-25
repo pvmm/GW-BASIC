@@ -1484,7 +1484,13 @@ class PasmoWriter:
             return 'EX DE, HL'
         if {op1, op2} == {'AL', 'AH'}:
             return 'LD C\', A\n\tLD A, B\'\n\tLD B\', C\''
-        raise SyntaxError("Only DX and BX can be exchanged (trying %s, %s)" % (op1, op2))
+        if self._is_16bit_reg(op1) and self._is_16bit_reg(op2):
+            push_pop_regs = {'AF', 'BC', 'DE', 'HL', 'IX', 'IY'}
+            z1 = self.regmap[op1]
+            z2 = self.regmap[op2]
+            if z1 in push_pop_regs and z2 in push_pop_regs:
+                return 'PUSH %s\n\tPUSH %s\n\tPOP %s\n\tPOP %s' % (z1, z2, z1, z2)
+        raise SyntaxError("Don't know how to generate XCHG %s, %s" % (op1, op2))
 
     def _is_ptr_read_through_bx(self, op):
         return op[0] == 'BYTE' and op[1][0] == 'PTR' and op[1][1] == '[BX]'
