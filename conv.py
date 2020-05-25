@@ -1571,11 +1571,11 @@ class PasmoWriter:
             if isinstance(op2, int) and 0 <= op2 <= 255:
                 return 'XOR %d' % op2
         if (op1, op2) == ('AH', 'AH'):
-            return 'PUSH AF\n\tXOR A\n\tLD B\', 0\n\tPOP AF'
+            return '; FIXME: This is invalid Z80 code\n\tPUSH AF\n\tXOR A\n\tLD B\', 0\n\tPOP AF'
         if (op1, op2) == ('SI', 'SI'):
-            return 'PUSH A\n\tXOR A\n\tXOR IYH\n\tXOR IYL\n\tPOP A'
+            return 'LD IY, 0'
         if (op1, op2) == ('DI', 'DI'):
-            return 'PUSH A\n\tXOR A\n\tXOR IXH\n\tXOR IXL\n\tPOP A'
+            return 'LD IX, 0'
         if {op1, op2} == {'BX', 'DX'}:
             return ('EX AF, AF\'\n\t' +
                     'LD A, H\n\t' +
