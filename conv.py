@@ -80,14 +80,6 @@ class Lexer:
     def _backup(self):
         self.pos -= 1
 
-    def _remaining(self):
-        return self.end - self.pos
-
-    def _str_equal(self, s):
-        if self._remaining() < len(s):
-            return False
-        return self.contents[self.start : self.start + len(s)] == s
-
     def _lexer_single_line_comment(self):
         self._ignore() # Ignore ;
 
