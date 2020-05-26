@@ -1698,7 +1698,11 @@ class PasmoWriter:
                 return '%s (HL)' % z80
             if isinstance(op2, tuple) and len(op2) >= 2 and op2[0] == 'LOW':
                 return '%s %s' % (z80, ' '.join(str(op) for op in op2[1:]))
+        if op1 == 'CX':
+            # FIXME: Implement this.
+            return '; SUB CX, %s' % str(op2)
         if op1 == 'BX' and op2 == 'DX':
+            # FIXME: Is SBC always the right choice here?
             return 'SBC HL, DE'
         if op1 == 'DL' and self._is_ptr_read(op2):
             return ('PUSH HL\n\t' +
