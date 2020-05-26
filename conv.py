@@ -1913,6 +1913,14 @@ class PasmoWriter:
     def _gen_instruction_ret_jnae(self, token):
         return self._gen_instruction_ret_jb(token)
 
+    def _gen_instruction_std(self, token):
+        # FIXME: what to do here?
+        return '; STD'
+
+    def _gen_instruction_cld(self, token):
+        # FIXME: what to do here?
+        return '; CLD'
+
     def _gen_instruction(self, token):
         op = token['op']
         instr = getattr(self, '_gen_instruction_' + op.lower())(token)
