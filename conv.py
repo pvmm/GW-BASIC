@@ -1389,6 +1389,9 @@ class PasmoWriter:
             # FIXME: still don't know what to do about AH
             if isinstance(op2, tuple) and len(op2) == 2 and op2[0] == 'LOW' and isinstance(op2[1], int):
                 return '; CMP AH, %dD' % op2[1]
+        if token['operands'] == (('BYTE', 'PTR', 0, '[DI]'), 'AL'):
+            # FIXME: implement this
+            return '; CMP 0[DI], AL'
         if isinstance(op1, tuple) and len(op1) == 3 and op1[:2] == ('BYTE', 'PTR') and op1[2].endswith('[SI]'):
             if isinstance(op2, tuple) and len(op2) == 2 and op2[0] == 'LOW' and isinstance(op2[1], int):
                 op2 = op2[1]
