@@ -1467,6 +1467,9 @@ class PasmoWriter:
         raise SyntaxError("Unsupported JZ to %s" % op)
 
     def _gen_instruction_jne(self, token):
+        return self._gen_instruction_jnz(token)
+
+    def _gen_instruction_je(self, token):
         return self._gen_instruction_jz(token)
 
     def _gen_instruction_ret(self, token):
