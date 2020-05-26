@@ -1399,6 +1399,11 @@ class PasmoWriter:
                         'POP HL\n\t') % (reg, reg)
         raise SyntaxError("Don't know how to generate CMP: %s" % token)
 
+    def _gen_instruction_ja(self, token):
+        assert len(token['operands']) == 1
+        return ('JR NC, $+2\n\t' +
+                'JP Z %s') % token['operands'][0]
+
     def _gen_instruction_jnz(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
