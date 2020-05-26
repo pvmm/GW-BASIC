@@ -1266,7 +1266,7 @@ class PasmoWriter:
         return '%s:' % token['identifier']
 
     def _is_16bit_reg(self, reg):
-        return reg[1] == 'X' or reg == 'SI' or reg == 'DI' or reg == 'ES'
+        return isinstance(reg, str) and len(reg) == 2 and reg[1] == 'X' or reg == 'SI' or reg == 'DI' or reg == 'ES'
 
     def _gen_instruction_mov(self, token):
         # FIXME: not all operations are possible here; for instance, it's not
