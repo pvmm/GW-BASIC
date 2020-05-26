@@ -830,6 +830,10 @@ class Parser:
             self._emit({'type': 'instruction', 'op': 'mov', 'operands': ('CL', operands[1]), 'comment': comment})
             return self._parse_asm
 
+        if operands == (211, 234):
+            self._emit({'type': 'instruction', 'op': 'shr', 'operands': ('DX', 'CL'), 'comment': comment})
+            return self._parse_asm
+
         debug = []
         for op in operands:
             if isinstance(op, int): debug.append('%02x' % op)
