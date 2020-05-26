@@ -1331,15 +1331,31 @@ class PasmoWriter:
     def _gen_instruction_inc(self, token):
         return 'INC %s' % self.regmap[token['operands'][0]]
 
+    def _is_low_imm8(self, op):
+        return isinstance(op, tuple) and len(op) == 2 and op[0] == 'LOW' and isinstance(op[1], int)
+
     def _gen_instruction_cmp(self, token):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
-        if self._is_ptr_read_through_bx(op1):
-            if isinstance(op2, tuple) and len(op2) == 2 and op2[0] == 'LOW' and isinstance(op2[1], int):
+        if op1 == 'CH':
+            if self._is_low_imm8(op2):
                 op2 = op2[1]
             elif not isinstance(op2, int):
                 raise SyntaxError("Can't generate CMP %s" % token)
-
+            if 0 <= op2 <= 255 or -128 <= op2 <= 127:
+                return ('PUSH BC\n\t' +
+                        'PUSH HL\n\t' +
+                        'LD H, A\n\t' +
+                        'LD A, B\n\t' +
+                        'CP %dD\n\t' +
+                        'LD A, H\n\t' +
+                        'POP HL\n\t' +
+                        'POP BC\n\t') % op2
+        if self._is_ptr_read_through_bx(op1):
+            if self._is_low_imm8(op2):
+                op2 = op2[1]
+            elif not isinstance(op2, int):
+                raise SyntaxError("Can't generate CMP %s" % token)
             return ('PUSH BC\n\t' +
                     'LD B, A\n\t' +
                     'LD A, %dD\n\t' +
