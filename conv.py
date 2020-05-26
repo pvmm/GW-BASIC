@@ -1383,6 +1383,10 @@ class PasmoWriter:
     def _gen_instruction_cmp(self, token):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
+        if op1 == 'AH':
+            # FIXME: still don't know what to do about AH
+            if isinstance(op2, tuple) and len(op2) == 2 and op2[0] == 'LOW' and isinstance(op2[1], int):
+                return '; CMP AH, %dD' % op2[1]
         if isinstance(op1, tuple) and len(op1) == 3 and op1[:2] == ('BYTE', 'PTR') and op1[2].endswith('[SI]'):
             if isinstance(op2, tuple) and len(op2) == 2 and op2[0] == 'LOW' and isinstance(op2[1], int):
                 op2 = op2[1]
