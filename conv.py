@@ -1293,6 +1293,8 @@ class PasmoWriter:
             else:
                 operands.append(op)
 
+        assert len(operands) == 2
+
         op0_is_index = operands[0] in {'IX', 'IY'}
         op1_is_index = operands[1] in {'IX', 'IY'}
         if op0_is_index != op1_is_index:
@@ -1302,6 +1304,10 @@ class PasmoWriter:
             if op0_is_index:
                 return 'LD %sH, %s\n\tLD %sL, %s' % (z1, z2[0], z1, z2[1])
             return 'LD %s, %sH\n\tLD %sL, %s' % (z1[0], z2, z1[1], z2)
+
+        if all(self._is_16bit_reg(op) for op in token['operands']):
+            return ('PUSH %s\n\t' +
+                    'POP %s\n\t') % (operands[0], operands[1])
 
         return 'LD %s' % ', '.join(str(op) for op in operands)
 
