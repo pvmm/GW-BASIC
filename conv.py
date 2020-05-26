@@ -1394,6 +1394,9 @@ class PasmoWriter:
             return 'JR Z, %s' % op[1]
         raise SyntaxError("Unsupported JZ to %s" % op)
 
+    def _gen_instruction_jne(self, token):
+        return self._gen_instruction_jz(token)
+
     def _gen_instruction_ret(self, token):
         assert len(token['operands']) == 0
         # FIXME: maybe look at the code to generate other RET variants?
