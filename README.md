@@ -25,8 +25,18 @@ perfect yet; a lot of instructions being generated are invalid and the code gene
 be reviewed.  Having said that, the generator is able to start and finish going through these
 files:
 
- * BISTRS.ASM
- * FIVEO.ASM
- * GWMAIN.ASM
- * GWEVAL.ASM
- * GENGRP.ASM
+  * ADVGRP.ASM
+  * BIPRTU.ASM
+  * BIPTRG.ASM
+  * BISTRS.ASM
+  * DSKCOM.ASM
+  * FIVEO.ASM
+  * GENGRP.ASM
+  * GIOCAS.ASM
+  * GIOCON.ASM
+  * GIOTBL.ASM
+  * GWEVAL.ASM
+  * GWLIST.ASM
+  * GWMAIN.ASM
+  * MACLNG.ASM
+  * OEM.H
