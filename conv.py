@@ -1176,8 +1176,16 @@ class Transformer:
             elif self._is_xthl(token):
                 ignore_count = 2 # Ignore XCHG SI, BX / PUSH SI
                 token = {'type': 'instruction', 'op': 'xthl', 'operands': [], 'comment': token['comment']}
+            elif self._is_rep(token):
+                to_repeat = token['operands'][0].lower()
+                token = {'type': 'instruction', 'op': 'rep_' + to_repeat, 'operands': []}
 
             yield token
+
+    def _is_rep(self, token):
+        if token['type'] == 'instruction' and token['op'] == 'REP' and len(token['operands']) == 1:
+            return token['operands'][0] in {'LODSB', 'LODSW', 'STOSB', 'STOSW', 'MOVSB', 'MOVSW', 'SCASB', 'SCASW'}
+        return False
 
     def _is_jump_skip_ret(self, token):
         if token['type'] != 'instruction':
