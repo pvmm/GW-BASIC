@@ -474,7 +474,7 @@ class Parser:
             'JNE', 'RCL', 'RCR', 'CLC', 'MOVSW', 'LODS', 'STOSW', 'NOT', 'STD',
             'CMPSW', 'JPE', 'IMUL', 'IDIV', 'MUL', 'SAL', 'JE', 'LODSW', 'LODSB',
             'MOVSB', 'JA', 'DIV', 'JCXZ', 'CLI', 'STI', 'LEA', 'JP', 'IN', 'OUT',
-            'INT', 'JG',
+            'INT', 'JG', 'REPE', 'REPZ', 'REPNE', 'REPNZ',
         }
 
     def _is_macro(self, token):
@@ -1205,12 +1205,14 @@ class Transformer:
                     token = {'type': 'instruction', 'op': 'xthl', 'operands': [], 'comment': token['comment']}
                 elif self._is_rep(token):
                     to_repeat = token['operands'][0].lower()
-                    token = {'type': 'instruction', 'op': 'rep_' + to_repeat, 'operands': []}
+                    token = {'type': 'instruction', 'op': token['op'].lower() + '_' + to_repeat, 'operands': [], 'comment': token['comment']}
 
             yield token
 
     def _is_rep(self, token):
-        if token['op'] == 'REP' and len(token['operands']) == 1:
+        if token['op'] not in {'REP', 'REPE', 'REPZ', 'REPNZ', 'REPNE'}:
+            return False
+        if len(token['operands']) == 1:
             return token['operands'][0].upper() in {'LODSB', 'LODSW', 'STOSB', 'STOSW', 'MOVSB', 'MOVSW', 'SCASB', 'SCASW'}
         return False
 
@@ -1924,6 +1926,10 @@ class PasmoWriter:
     def _gen_instruction_cld(self, token):
         # FIXME: what to do here?
         return '; CLD'
+
+    def _gen_instruction_repe_scasb(self, token):
+        # FIXME: what to do here?
+        return '; REPE SCASB'
 
     def _gen_instruction(self, token):
         op = token['op']
