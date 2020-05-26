@@ -1438,6 +1438,8 @@ class PasmoWriter:
                     op2 = ''.join(str(op) for op in op2[2:])
                 elif self._is_ptr_read_through_bx(op2):
                     op2 = '(HL)'
+                elif len(op2) == 4 and op2[:2] == ('BYTE', 'PTR') and op2[3] in ('[DI]', '[SI]') and isinstance(op2[2], int):
+                    op2 = '(%s+%d)' % (self.regmap[op2[3][1:-1]], op2[2])
                 else:
                     raise SyntaxError("Don't know how to generate CMP AL, %s" % op2)
             return 'CP %s' % op2
