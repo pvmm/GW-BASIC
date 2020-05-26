@@ -1334,6 +1334,18 @@ class PasmoWriter:
     def _gen_instruction_cmp(self, token):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
+        if self._is_ptr_read_through_bx(op1):
+            if isinstance(op2, tuple) and len(op2) == 2 and op2[0] == 'LOW' and isinstance(op2[1], int):
+                op2 = op2[1]
+            elif not isinstance(op2, int):
+                raise SyntaxError("Can't generate CMP %s" % token)
+
+            return ('PUSH BC\n\t' +
+                    'LD B, A\n\t' +
+                    'LD A, %dD\n\t' +
+                    'CP (HL)\n\t' +
+                    'LD A, B\n\t' +
+                    'POP BC') % op2
         if op1 == 'AL' and op2 in self.regmap:
             return 'CP %s' % self.regmap[op2]
         if op1 == 'AL':
