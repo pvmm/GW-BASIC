@@ -473,7 +473,7 @@ class Parser:
             'JNE', 'RCL', 'RCR', 'CLC', 'MOVSW', 'LODS', 'STOSW', 'NOT', 'STD',
             'CMPSW', 'JPE', 'IMUL', 'IDIV', 'MUL', 'SAL', 'JE', 'LODSW', 'LODSB',
             'MOVSB', 'JA', 'DIV', 'JCXZ', 'CLI', 'STI', 'LEA', 'JP', 'IN', 'OUT',
-            'INT',
+            'INT', 'JG',
         }
 
     def _is_macro(self, token):
@@ -1420,6 +1420,11 @@ class PasmoWriter:
         assert len(token['operands']) == 1
         return ('JR NC, $+2\n\t' +
                 'JP Z %s') % token['operands'][0]
+
+    def _gen_instruction_jg(self, token):
+        assert len(token['operands']) == 1
+        return ('JR NZ, $+2\n\t' +
+                'JP PE, %s') % token['operands'][0]
 
     def _gen_instruction_jnz(self, token):
         assert len(token['operands']) == 1
