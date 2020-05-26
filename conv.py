@@ -1170,32 +1170,31 @@ class Transformer:
                 else:
                     ignore_count -= 1
                     continue
-            elif self._is_jump_skip_ret(token):
-                ignore_count = 1 # Ignore RET
-                token = {'type': 'instruction', 'op': 'ret_' + token['op'], 'operands': [], 'comment': token['comment']}
-            elif self._is_xthl(token):
-                ignore_count = 2 # Ignore XCHG SI, BX / PUSH SI
-                token = {'type': 'instruction', 'op': 'xthl', 'operands': [], 'comment': token['comment']}
-            elif self._is_rep(token):
-                to_repeat = token['operands'][0].lower()
-                token = {'type': 'instruction', 'op': 'rep_' + to_repeat, 'operands': []}
+            elif token['type'] == 'instruction':
+                if self._is_jump_skip_ret(token):
+                    ignore_count = 1 # Ignore RET
+                    token = {'type': 'instruction', 'op': 'ret_' + token['op'], 'operands': [], 'comment': token['comment']}
+                elif self._is_xthl(token):
+                    ignore_count = 2 # Ignore XCHG SI, BX / PUSH SI
+                    token = {'type': 'instruction', 'op': 'xthl', 'operands': [], 'comment': token['comment']}
+                elif self._is_rep(token):
+                    to_repeat = token['operands'][0].lower()
+                    token = {'type': 'instruction', 'op': 'rep_' + to_repeat, 'operands': []}
 
             yield token
 
     def _is_rep(self, token):
-        if token['type'] == 'instruction' and token['op'] == 'REP' and len(token['operands']) == 1:
+        if token['op'] == 'REP' and len(token['operands']) == 1:
             return token['operands'][0] in {'LODSB', 'LODSW', 'STOSB', 'STOSW', 'MOVSB', 'MOVSW', 'SCASB', 'SCASW'}
         return False
 
     def _is_jump_skip_ret(self, token):
-        if token['type'] != 'instruction':
-            return False
         if token['op'] not in {'JZ', 'JNZ', 'JNAE', 'JNB', 'JS'}:
             return False
         return token['operands'] == (('SHORT', '$+3'),)
 
     def _is_xthl(self, token):
-        return token['type'] == 'instruction' and (token['op'], token['operands']) == ('POP', ('SI',))
+        return token['op'] == 'POP' and token['operands'] == ('SI',)
 
 class PasmoWriter:
     regmap = {
