@@ -1354,6 +1354,17 @@ class PasmoWriter:
     def _gen_instruction_cmp(self, token):
         assert len(token['operands']) == 2
         op1, op2 = token['operands']
+        if isinstance(op1, tuple) and len(op1) == 3 and op1[:2] == ('BYTE', 'PTR') and op1[2].endswith('[SI]'):
+            if isinstance(op2, tuple) and len(op2) == 2 and op2[0] == 'LOW' and isinstance(op2[1], int):
+                op2 = op2[1]
+            elif not isinstance(op2, int):
+                raise SyntaxError("Don't know how to generate CMP %s" % str(token))
+            offset = op1[2][:-4]
+            return ('PUSH BC\n\t' +
+                    'LD B, A\n\t' +
+                    'LD A, %dD\n\t' +
+                    'CP (IY+%s)\n\t' +
+                    'POP BC') % (op2, offset)
         if op1 == 'CH':
             if self._is_low_imm8(op2):
                 op2 = op2[1]
