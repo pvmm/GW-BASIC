@@ -1700,7 +1700,7 @@ class PasmoWriter:
                     'LD HL, %s\n\t' +
                     'SUB (HL)\n\t' +
                     'EX AF, AF\'\n\t' +
-                    'POP HL') % op2
+                    'POP HL') % op2[2]
         raise SyntaxError("Don't know how to generate %s with ops %s, %s" % (z80, op1, op2))
 
     def _gen_instruction_sbb(self, token):
