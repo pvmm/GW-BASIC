@@ -1329,7 +1329,24 @@ class PasmoWriter:
         return self._gen_instruction_add(token, 'ADC')
 
     def _gen_instruction_inc(self, token):
-        return 'INC %s' % self.regmap[token['operands'][0]]
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
+        if self._is_ptr_read_through_bx(op):
+            return 'INC (HL)'
+        if op == ('WORD', 'PTR', 0, '[BX]'):
+            return ('PUSH IY\n\t' +
+                    'PUSH BC\n\t' +
+                    'LD IY, HL\n\t' +
+                    'LD B, (IY+0)\n\t' +
+                    'LD C, (IY+1)\n\t' +
+                    'INC BC\n\t' +
+                    'LD (IY+0), B\n\t' +
+                    'LD (IY+1), C\n\t' +
+                    'POP BC\n\t' +
+                    'POP IY')
+        if op in self.regmap:
+            return 'INC %s' % self.regmap[op]
+        raise SyntaxError("Could not generate INC %s" % str(op))
 
     def _is_low_imm8(self, op):
         return isinstance(op, tuple) and len(op) == 2 and op[0] == 'LOW' and isinstance(op[1], int)
