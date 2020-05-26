@@ -1322,7 +1322,7 @@ class PasmoWriter:
             return '%s %s, %s' % (z80, self.regmap[op1], ' '.join(str(op) for op in op2))
         if op1 == 'AX' and isinstance(op2, int):
             # FIXME: figure out what to do with usage of AX...
-            return '; ADD AX, %d' % op2
+            return '; ADD AX, %dD' % op2
         raise SyntaxError("Don't know how to generate %s: %s, %s" % (z80, op1, op2))
 
     def _gen_instruction_adc(self, token):
@@ -1362,7 +1362,7 @@ class PasmoWriter:
         if op1 == 'DX' and isinstance(op2, int):
             return ('PUSH HL\n\t' +
                     'PUSH DE\n\t' +
-                    'LD HL, %d\n\t' +
+                    'LD HL, %dD\n\t' +
                     'OR A\n\t' +
                     'SBC DE, HL\n\t' +
                     'ADD DE, HL\n\t' +
@@ -1500,7 +1500,7 @@ class PasmoWriter:
             if op >= -128 and op < 127:
                 # FIXME: is this correct? The offset here is relative to the 8086
                 # instructions, not Z80...
-                return 'JR NC, %d' % op
+                return 'JR NC, %dD' % op
         if isinstance(op, str):
             return 'JP NC, %s' % op[0]
         if len(op) == 1:
@@ -1632,7 +1632,7 @@ class PasmoWriter:
             if isinstance(op2, tuple) and op2[0] == 'LOW' and isinstance(op2[1], int):
                 op2 = op2[1]
             if isinstance(op2, int) and 0 <= op2 <= 255:
-                return 'XOR %d' % op2
+                return 'XOR %dD' % op2
         if (op1, op2) == ('AH', 'AH'):
             return '; FIXME: This is invalid Z80 code\n\tPUSH AF\n\tXOR A\n\tLD B\', 0\n\tPOP AF'
         if (op1, op2) == ('SI', 'SI'):
@@ -1801,7 +1801,7 @@ class PasmoWriter:
         assert len(token['operands']) == 1
         op = token['operands'][0]
         # FIXME: what to do here?
-        return '; INT %d' % op
+        return '; INT %dD' % op
 
     def _gen_instruction_ret_jz(self, token):
         return 'RET Z'
