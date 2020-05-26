@@ -1555,7 +1555,7 @@ class PasmoWriter:
         raise SyntaxError("Don't know how to generate XCHG %s, %s" % (op1, op2))
 
     def _is_ptr_read_through_bx(self, op):
-        return op == ('BYTE', 'PTR', '[BX]')
+        return op[:2] == ('BYTE', 'PTR') and op[2:] in (('[BX]',), (0, '[BX]'))
 
     def _is_ptr_read(self, op):
         return isinstance(op, tuple) and len(op) == 3 and op[:2] == ('BYTE', 'PTR')
