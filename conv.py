@@ -1567,15 +1567,15 @@ class PasmoWriter:
         raise SyntaxError("Can't make JAE to %s" % op)
 
     def _gen_instruction_js(self, token):
-        assert len(token['operands']) in (1, 2)
-        op = token['operands']
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
         if len(op) == 1:
             return 'JP M, %s' % op[0]
         return 'JP M, %s' % ' '.join(str(op) for op in op)
 
     def _gen_instruction_jns(self, token):
-        assert len(token['operands']) in (1, 2)
-        op = token['operands']
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
         if len(op) == 1:
             return 'JP P, %s' % op[0]
         return 'JP P, %s' % ' '.join(str(op) for op in op)
@@ -1584,11 +1584,11 @@ class PasmoWriter:
         return self._gen_instruction_jns(token)
 
     def _gen_instruction_jb(self, token):
-        assert len(token['operands']) in (1, 2)
-        op = token['operands']
-        if len(op) == 1:
+        assert len(token['operands']) == 1
+        op = token['operands'][0]
+        if len(token['operands']) == 1:
             return 'JP C, %s' % op[0]
-        if len(op) == 2 and op[0] == 'SHORT':
+        if len(token['operands']) == 2 and op[0] == 'SHORT':
             return 'JR C, %s' % op[1]
         raise SyntaxError("Can't generate JB %s" % token)
 
