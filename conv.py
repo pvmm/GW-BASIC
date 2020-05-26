@@ -307,6 +307,7 @@ class Parser:
         self.in_cseg = False
         self.in_dseg = False
         self.forc_counter = 0
+        self.rept_counter = 0
         self.macro_args = deque()
         self.radix = 10
 
@@ -999,14 +1000,17 @@ class Parser:
         if escaping:
             self._emit({'type': 'end_macro_escaped'})
         else:
-            if self.forc_counter:
+            if self.rept_counter:
+                self.rept_counter -= 1
+                self._emit({'type': 'end_rept'})
+            elif self.forc_counter:
                 self.forc_counter -= 1
                 self._emit({'type': 'end_forc'})
             elif self.macro_args:
                 self.macro_args.popleft()
                 self._emit({'type': 'end_macro'})
             else:
-                return self._error("Not in macro or forc")
+                return self._error("Not in macro, rept, or forc")
         return self._parse_asm
 
     def _parse_forc(self):
@@ -1056,6 +1060,14 @@ class Parser:
             if peek['type'] == 'token' and peek['value'] == 'MACRO':
                 return True
         return False
+
+    def _parse_rept(self):
+        count = self._must_next("Expecting argument to rept")
+        if count['type'] not in ('token', 'number'):
+            return self._error("Don't know how to parse REPT argument")
+        self._emit({'type': 'rept', 'count': count})
+        self.rept_counter += 1
+        return self._parse_asm
 
     def _parse_asm(self):
         while True:
@@ -1116,6 +1128,8 @@ class Parser:
                     return self._parse_purge
                 if typ in ('FORC', 'IRPC'):
                     return self._parse_forc
+                if typ == 'REPT':
+                    return self._parse_rept
                 if token['value'].endswith(':'):
                     return self._parse_label(token)
                 if self._is_x86_instruction(token):
@@ -1946,6 +1960,12 @@ class PasmoWriter:
 
     def _gen_else(self, token):
         return '\tELSE'
+
+    def _gen_rept(self, token):
+        return 'REPT %s' % token['count']['value']
+
+    def _gen_end_rept(self, token):
+        return 'ENDM'
 
 if __name__ == '__main__':
     lexer = Lexer(sys.stdin)
