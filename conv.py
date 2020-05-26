@@ -1185,7 +1185,7 @@ class Transformer:
 
     def _is_rep(self, token):
         if token['op'] == 'REP' and len(token['operands']) == 1:
-            return token['operands'][0] in {'LODSB', 'LODSW', 'STOSB', 'STOSW', 'MOVSB', 'MOVSW', 'SCASB', 'SCASW'}
+            return token['operands'][0].upper() in {'LODSB', 'LODSW', 'STOSB', 'STOSW', 'MOVSB', 'MOVSW', 'SCASB', 'SCASW'}
         return False
 
     def _is_jump_skip_ret(self, token):
