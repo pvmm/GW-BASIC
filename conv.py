@@ -1721,9 +1721,12 @@ class PasmoWriter:
                 return 'XOR %dD' % op2
         if (op1, op2) == ('AH', 'AH'):
             return '; FIXME: This is invalid Z80 code\n\tPUSH AF\n\tXOR A\n\tLD B\', 0\n\tPOP AF'
-        if op1 == op2 and op1 in self.regmap:
+        if op1 == op2:
             # FIXME: what about the flags?
-            return 'LD %s, 0' % self.regmap[op1]
+            if op1 in self.regmap:
+                return 'LD %s, 0' % self.regmap[op1]
+            elif op1 == 'AX':
+                return '; FIXME: Invalid Z80 code\n\tLD AF, 0'
         if {op1, op2} == {'BX', 'DX'}:
             return ('EX AF, AF\'\n\t' +
                     'LD A, H\n\t' +
