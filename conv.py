@@ -1932,6 +1932,12 @@ class PasmoWriter:
         # FIXME: what to do here?
         return '; CLD'
 
+    def _gen_instruction_cli(self, token):
+        return 'DI'
+
+    def _gen_instruction_sti(self, token):
+        return 'EI'
+
     def _gen_instruction_repe_scasb(self, token):
         # FIXME: what to do here?
         return '; REPE SCASB'
