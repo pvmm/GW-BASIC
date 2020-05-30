@@ -1413,6 +1413,16 @@ class Transformer:
                 fill_dict(matched, {'op': window[1]['op'] + '_' + self.inverted_jumps[window[0]['op']][1:], 'operands': window[1]['operands']})
                 continue
 
+            matched = self._match(window, ('POP', ('AX',)), ('SAHF', ()))
+            if matched:
+                fill_dict(matched, {'op': 'POP', 'operands': ('AX',)})
+                continue
+
+            matched = self._match(window, ('LAHF', ()), ('PUSH', ('AX',)))
+            if matched:
+                fill_dict(matched, {'op': 'PUSH', 'operands': ('AX',)})
+                continue
+
         return trans_dict
 
     def transform(self):
