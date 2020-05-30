@@ -1685,6 +1685,12 @@ class PasmoWriter:
                     'ADD DE, HL\n\t' +
                     'POP DE\n\t' +
                     'POP HL') % op2
+        if (op1, op2) == ('BX', 'DX'):
+            return ('LD A, H\n\t' +
+                    'SUB D\n\t' +
+                    'RET NZ\n\t' +
+                    'LD A, L\n\t' +
+                    'SUB E')
         if op2 in self.regmap:
             reg = self.regmap[op2]
             if op1 == 'BX':
