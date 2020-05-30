@@ -1785,7 +1785,7 @@ class PasmoWriter:
                 # instructions, not Z80...
                 return 'JR NC, %dD' % op
         if isinstance(op, str):
-            return 'JP NC, %s' % op[0]
+            return 'JP NC, %s' % op
         if len(op) == 1:
             return 'JP NC, %s' % op[0]
         if len(op) == 2 and op[0] == 'SHORT':
@@ -1795,6 +1795,8 @@ class PasmoWriter:
     def _gen_instruction_js(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
+        if isinstance(op, str):
+            return 'JP M, %s' % op
         if len(op) == 1:
             return 'JP M, %s' % op[0]
         return 'JP M, %s' % ' '.join(str(op) for op in op)
@@ -1802,6 +1804,8 @@ class PasmoWriter:
     def _gen_instruction_jns(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
+        if isinstance(op, str):
+            return 'JP P, %s' % op
         if len(op) == 1:
             return 'JP P, %s' % op[0]
         return 'JP P, %s' % ' '.join(str(op) for op in op)
@@ -1812,6 +1816,8 @@ class PasmoWriter:
     def _gen_instruction_jb(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
+        if isinstance(op, str):
+            return 'JP C, %s' % op
         if len(token['operands']) == 1:
             return 'JP C, %s' % op[0]
         if len(token['operands']) == 2 and op[0] == 'SHORT':
