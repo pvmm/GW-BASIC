@@ -1343,27 +1343,23 @@ class Transformer:
 
     def transform(self):
         def annotate_with_id():
-            id = 0
-            for token in self.parser.parse():
+            for id, token in enumerate(self.parser.parse()):
                 token['id'] = id
                 yield token
-                id += 1
 
         left, right = tee(annotate_with_id())
         trans_dict = self._calculate_transform_dict(left)
         for token in right:
-            if token['id'] not in trans_dict:
-                yield token
-                continue
+            if token['id'] in trans_dict:
+                trans = trans_dict[token['id']]
+                if trans is None:
+                    comment = token.get('comment', None)
+                    if comment is not None:
+                        yield {'type': 'comment', 'value': comment}
+                    continue
 
-            trans = trans_dict[token['id']]
-            if trans is None:
-                comment = token.get('comment', None)
-                if comment is not None:
-                    yield {'type': 'comment', 'value': comment}
-                continue
+                token.update(trans)
 
-            token.update(trans)
             yield token
 
 class PasmoWriter:
