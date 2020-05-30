@@ -2125,6 +2125,15 @@ class PasmoWriter:
     def _gen_instruction_ret_jb(self, token):
         return 'RET C'
 
+    def _gen_instruction_ret_jae(self, token):
+        return self._gen_instruction_ret_jnb(token)
+
+    def _gen_instruction_ret_jnae(self, token):
+        return self._gen_instruction_ret_jb(token)
+
+    def _gen_instruction_ret_jns(self, token):
+        return self._gen_instruction_ret_js(token)
+
     def _gen_instruction_ret_jnae(self, token):
         return self._gen_instruction_ret_jb(token)
 
@@ -2158,15 +2167,6 @@ class PasmoWriter:
 
     def _gen_instruction_djnz(self, token):
         return 'DJNZ %s' % token['operands'][0][-1]
-
-    def _gen_instruction_ret_jae(self, token):
-        return '%s\n\tRET' % self._gen_instruction_jnae({'operands': ('$+3',)})
-
-    def _gen_instruction_ret_jnae(self, token):
-        return 's\n\tRET' % self._gen_instruction_jae({'operands': ('$+3',)})
-
-    def _gen_instruction_ret_jns(self, token):
-        return '%s\n\tRET' % self._gen_instruction_js({'operands': ('$+3',)})
 
     def _gen_instruction_mul16by8(self, token):
         return '; MUL 16-by-8 %s' % str(token['operands'])
