@@ -1378,7 +1378,7 @@ class Transformer:
                 fill_dict(matched, {'op': 'jz', 'operands': window[2]['operands']})
                 continue
 
-            matched = self._match(window, ('LAHF', ()), ({'INC', 'DEC'}, ({'BX', 'CX', 'DX'},)), ('SAHF', ()))
+            matched = self._match(window, ('LAHF', ()), ({'INC', 'DEC'}, ({'BX', 'CX', 'DX', 'SP'},)), ('SAHF', ()))
             if matched:
                 fill_dict(matched, {'op': window[1]['op'], 'operands': window[1]['operands']})
                 continue
