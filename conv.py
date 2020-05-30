@@ -4,6 +4,7 @@
 
 from collections import deque
 from itertools import tee, chain, repeat
+import re
 import sys
 import traceback
 
@@ -1260,6 +1261,17 @@ def windowed(seq, n, fillvalue=None, step=1):
 class Transformer:
     def __init__(self, parser):
         self.parser = parser
+        self.inverted_jumps = {
+            'JZ': 'JNZ',
+            'JAE': 'JNAE',
+            'JB': 'JNB',
+            'JS': 'JNS',
+            'JNZ': 'JZ',
+            'JNAE': 'JAE',
+            'JNB': 'JB',
+            'JNS': 'JS',
+        }
+        self.autogenlabel_re = re.compile('^\\?\\?L\\d+$')
 
     def extern(self, identifier):
         return self.parser.externs.get(identifier)
@@ -1286,7 +1298,7 @@ class Transformer:
 
         def _match_op(code, pattern):
             if code['type'] == 'label':
-                return False
+                return pattern == ('??L:', None) and self.autogenlabel_re.fullmatch(code['identifier'])
 
             code_op, code_oper = code['op'], code['operands']
             pattern_op, pattern_oper = pattern
@@ -1367,17 +1379,7 @@ class Transformer:
 
             matched = self._match(window, ({'JZ', 'JAE', 'JB', 'JS', 'JNZ', 'JNAE', 'JNB', 'JNS'}, (('SHORT', '$+3'),)), ('RET', ()))
             if matched:
-                inverted = {
-                    'JZ': 'JNZ',
-                    'JAE': 'JNAE',
-                    'JB': 'JNB',
-                    'JS': 'JNS',
-                    'JNZ': 'JZ',
-                    'JNAE': 'JAE',
-                    'JNB': 'JB',
-                    'JNS': 'JS',
-                }
-                fill_dict(matched, {'op': 'ret_' + inverted[window[0]['op']], 'operands': ()})
+                fill_dict(matched, {'op': 'ret_' + self.inverted_jumps[window[0]['op']], 'operands': ()})
                 continue
 
             matched = self._match(window, ({'REP', 'REPE', 'REPZ', 'REPNZ', 'REPNE'}, ({'LODSB', 'LODSW', 'STOSB', 'STOSW', 'MOVSB', 'MOVSW', 'SCASB', 'SCASW', 'CMPSB'},)))
@@ -1388,6 +1390,11 @@ class Transformer:
             matched = self._match(window, ('XOR', ('AH', 'AH')), ('MUL', ('DX',)), ('MOV', ('DH', 'DL')))
             if matched:
                 fill_dict(matched, {'op': 'mul16by8', 'operands': ('AL', 'DX', 'DL')})
+                continue
+
+            matched = self._match(window, ({'JZ', 'JAE', 'JB', 'JS', 'JNZ', 'JNAE', 'JNB', 'JNS'}, (('SHORT', None),)), ('CALL', None), ('??L:', None))
+            if matched and self.autogenlabel_re.fullmatch(matched[0]['operands'][0][1]):
+                fill_dict(matched, {'op': 'call_' + self.inverted_jumps[window[0]['op']][1:], 'operands': window[1]['operands']})
                 continue
 
         return trans_dict
@@ -2174,6 +2181,21 @@ class PasmoWriter:
 
     def _gen_instruction_mul16by8(self, token):
         return '; MUL 16-by-8 %s' % str(token['operands'])
+
+    def _gen_instruction_call_z(self, token):
+        return 'CALL Z, %s' % token['operands'][0]
+
+    def _gen_instruction_call_nz(self, token):
+        return 'CALL NZ, %s' % token['operands'][0]
+
+    def _gen_instruction_call_b(self, token):
+        return 'CALL C, %s' % token['operands'][0]
+
+    def _gen_instruction_call_nc(self, token):
+        return 'CALL NC, %s' % token['operands'][0]
+
+    def _gen_instruction_call_ae(self, token):
+        return self._gen_instruction_call_nc(token)
 
     def _gen_instruction(self, token):
         op = token['op']
