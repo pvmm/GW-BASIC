@@ -1689,15 +1689,6 @@ class PasmoWriter:
         return ('JR NZ, $+2\n\t' +
                 'JP PE, %s') % token['operands'][0]
 
-    def _gen_instruction_jnz(self, token):
-        assert len(token['operands']) == 1
-        op = token['operands'][0]
-        if isinstance(op, str):
-            return 'JP NZ, %s' % op[0]
-        if len(op) == 2 and op[0] == 'SHORT':
-            return 'JR NZ, %s' % op[1]
-        raise SyntaxError("Unsupported JNZ to %s" % op)
-
     def _gen_instruction_jmp(self, token):
         assert len(token['operands']) == 1
         op = token['operands'][0]
@@ -1708,15 +1699,6 @@ class PasmoWriter:
         if len(op) == 2 and op[0] == 'SHORT':
             return 'JR %s' % op[1]
         raise SyntaxError("Unsupported JMP to %s" % op)
-
-    def _gen_instruction_jz(self, token):
-        assert len(token['operands']) == 1
-        op = token['operands'][0]
-        if isinstance(op, str):
-            return 'JP Z, %s' % op
-        if len(op) == 2 and op[0] == 'SHORT':
-            return 'JR Z, %s' % op[1]
-        raise SyntaxError("Unsupported JZ to %s" % op)
 
     def _gen_instruction_jne(self, token):
         return self._gen_instruction_jnz(token)
@@ -1804,54 +1786,54 @@ class PasmoWriter:
             return 'CALL %s' % op
         raise SyntaxError("Don't know how to generate CALL with arg %s" % op)
 
+    def _gen_instruction_cond_jmp(self, cond, op, has_jr=False):
+        is_short = isinstance(op, tuple) and len(op) == 2 and op[0] == 'SHORT'
+
+        target = None
+        if isinstance(op, str):
+            target = op
+        elif isinstance(op, tuple):
+            if len(op) == 1:
+                target = op[0]
+            elif len(op) == 2:
+                target = op[1]
+        elif isinstance(op, int):
+            if not(-128 <= op < 127 or 0 <= op <= 255):
+                is_short = False
+            target = op
+
+        if target is None:
+            raise NotImplementedError("Can't perform a conditional jump with target %s" % str(op))
+
+        instruction = "JR" if has_jr and is_short else "JP"
+        return "%s %s, %s" % (instruction, cond, target)
+
+    def _gen_instruction_jz(self, token):
+        assert len(token['operands']) == 1
+        return self._gen_instruction_cond_jmp('Z', token['operands'][0], has_jr=True)
+
+    def _gen_instruction_jnz(self, token):
+        assert len(token['operands']) == 1
+        return self._gen_instruction_cond_jmp('NZ', token['operands'][0], has_jr=True)
+
     def _gen_instruction_jae(self, token):
         assert len(token['operands']) == 1
-        op = token['operands'][0]
-        if isinstance(op, int):
-            if op >= -128 and op < 127:
-                # FIXME: is this correct? The offset here is relative to the 8086
-                # instructions, not Z80...
-                return 'JR NC, %dD' % op
-        if isinstance(op, str):
-            return 'JP NC, %s' % op
-        if len(op) == 1:
-            return 'JP NC, %s' % op[0]
-        if len(op) == 2 and op[0] == 'SHORT':
-            return 'JR NC, %s' % op[1]
-        raise SyntaxError("Can't make JAE to %s" % op)
+        return self._gen_instruction_cond_jmp('NC', token['operands'][0], has_jr=True)
 
     def _gen_instruction_js(self, token):
         assert len(token['operands']) == 1
-        op = token['operands'][0]
-        if isinstance(op, str):
-            return 'JP M, %s' % op
-        if len(op) == 1:
-            return 'JP M, %s' % op[0]
-        return 'JP M, %s' % ' '.join(str(op) for op in op)
+        return self._gen_instruction_cond_jmp('M', token['operands'][0])
 
     def _gen_instruction_jns(self, token):
         assert len(token['operands']) == 1
-        op = token['operands'][0]
-        if isinstance(op, str):
-            return 'JP P, %s' % op
-        if len(op) == 1:
-            return 'JP P, %s' % op[0]
-        return 'JP P, %s' % ' '.join(str(op) for op in op)
+        return self._gen_instruction_cond_jmp('P', token['operands'][0])
 
     def _gen_instruction_jp(self, token):
         return self._gen_instruction_jns(token)
 
     def _gen_instruction_jb(self, token):
         assert len(token['operands']) == 1
-        op = token['operands'][0]
-        if isinstance(op, str):
-            return 'JP C, %s' % op
-        if isinstance(op, tuple):
-            if len(op) == 1:
-                return 'JP C, %s' % op[0]
-            if len(op) == 2 and op[0] == 'SHORT':
-                return 'JR C, %s' % op[1]
-        raise SyntaxError("Can't generate JB %s" % token)
+        return self._gen_instruction_cond_jmp('C', token['operands'][0], has_jr=True)
 
     def _gen_instruction_jnae(self, token):
         return self._gen_instruction_jb(token)
