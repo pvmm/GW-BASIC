@@ -1329,7 +1329,7 @@ class Transformer:
             return op_match and oper_match
 
         reduced_window = window[:len(match)]
-        return reduced_window if all(_match_op(wop, mop) for wop, mop in zip(window[:len(match)], match)) else ()
+        return reduced_window if all(_match_op(wop, mop) for wop, mop in zip(reduced_window, match)) else ()
 
     def _calculate_transform_dict(self, tokens):
         trans_dict = {}
