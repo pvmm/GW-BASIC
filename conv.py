@@ -1362,9 +1362,19 @@ class Transformer:
                 fill_dict(matched, {'op': 'djnz', 'operands': window[1]['operands']})
                 continue
 
-            matched = self._match(window, ({'JZ', 'JNZ', 'JNAE', 'JNB', 'JS'}, (('SHORT', '$+3'),)), ('RET', ()))
+            matched = self._match(window, ({'JAE', 'JZ', 'JNZ', 'JNAE', 'JNB', 'JS'}, (('SHORT', '$+3'),)), ('RET', ()))
             if matched:
-                fill_dict(matched, {'op': 'ret_' + window[0]['op'], 'operands': ()})
+                inverted = {
+                    'JZ': 'JNZ',
+                    'JAE': 'JNAE',
+                    'JB': 'JNB',
+                    'JS': 'JNS',
+                    'JNZ': 'JZ',
+                    'JNAE': 'JAE',
+                    'JNB': 'JB',
+                    'JNS': 'JS',
+                }
+                fill_dict(matched, {'op': 'ret_' + inverted[window[0]['op']], 'operands': ()})
                 continue
 
             matched = self._match(window, ({'REP', 'REPE', 'REPZ', 'REPNZ', 'REPNE'}, ({'LODSB', 'LODSW', 'STOSB', 'STOSW', 'MOVSB', 'MOVSW', 'SCASB', 'SCASW', 'CMPSB'},)))
