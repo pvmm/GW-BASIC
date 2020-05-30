@@ -499,6 +499,9 @@ class Parser:
             return all(c in hex_digits for c in num)
         raise SyntaxError("Unknown radix: %d" % radix)
 
+    def _radix_to_num(self, radix):
+        return {'O': 8, 'H': 16, 'D': 10}[radix]
+
     def _parse_x86_operand(self, operand):
         out = []
         skip = False
@@ -509,7 +512,7 @@ class Parser:
             if isinstance(op, str):
                 if i < len(operand)-1 and operand[i+1] in ('O', 'H', 'D'):
                     skip = True
-                    radix = {'O': 8, 'H': 16, 'D': 10}[operand[i+1]]
+                    radix = self._radix_to_num(operand[i+1])
                 else:
                     radix = self.radix
                 if self._valid_number_for_radix(op, radix):
@@ -583,6 +586,31 @@ class Parser:
             return int(db[:-1], 16)
         if db[-1] == 'O':
             return int(db[:-1], 8)
+
+    def _parse_macro_movri(self, arguments, comment):
+        if len(arguments) != 4:
+            raise NotImplementedError("Don't know how to generate MOVRI with %d arguments" % len(arguments))
+
+        as_number = []
+        for arg in arguments:
+            if len(arg) == 2:
+                assert arg[0]['type'] == 'number'
+                assert arg[1]['type'] == 'token' and arg[1]['value'] in 'OHD'
+
+                arg = int(arg[0]['value'], self._radix_to_num(arg[1]['value']))
+            elif len(arg) == 1:
+                arg = int(arg[0]['value'], self.radix)
+            else:
+                raise NotImplementedError("Can't parse argument for MOVRI macro: %s" % str(arguments))
+
+            as_number.append(arg)
+
+        cx_val = as_number[1] | as_number[0] << 8
+        dx_val = as_number[3] | as_number[2] << 8
+
+        self._emit({'type': 'instruction', 'op': 'mov', 'operands': ('CX', cx_val), 'comment': comment})
+        self._emit({'type': 'instruction', 'op': 'mov', 'operands': ('DX', dx_val), 'comment': None})
+        return self._parse_asm
 
     def _parse_macro_ins86(self, arguments, comment):
         operands = []
@@ -875,6 +903,8 @@ class Parser:
 
         if macro == 'INS86':
             return self._parse_macro_ins86(operands, comment)
+        if macro == 'MOVRI':
+            return self._parse_macro_movri(operands, comment)
         if macro == 'POPR':
             return self._parse_macro_popr(comment)
 
@@ -1066,7 +1096,7 @@ class Parser:
     def _is_useless_macro(self, name):
         useless_macros = {
             'LDIR', 'LDDR', 'DJNZ', 'FSIGN', 'PUSHM', 'SYNCHK', 'OUTCHR', 'CHRGET',
-            'COMPAR', 'PUSHR', 'INST', 'GETYPE', 'INS86', 'POPR',
+            'COMPAR', 'PUSHR', 'INST', 'GETYPE', 'INS86', 'POPR', 'MOVRI',
         }
         if name in useless_macros:
             peek = self._peek()
