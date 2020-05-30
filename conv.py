@@ -1317,10 +1317,11 @@ class Transformer:
         def fill_dict(window, *new_tokens):
             if len(new_tokens) > len(window):
                 raise NotImplementedError("Can't insert more instructions than the window size")
-            for token in window:
-                trans_dict[token['id']] = None
-            for window_token, new_token in zip(window, new_tokens):
-                trans_dict[window_token['id']] = new_token
+            if not any(token['id'] in trans_dict for token in window):
+                for token in window:
+                    trans_dict[token['id']] = None
+                for window_token, new_token in zip(window, new_tokens):
+                    trans_dict[window_token['id']] = new_token
 
         for window in windowed((token for token in tokens if token['type'] in {'label', 'instruction'}), 4):
             if window[0] is None:
