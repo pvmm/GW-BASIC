@@ -1538,7 +1538,7 @@ class PasmoWriter:
                 elif len(op) >= 2 and op[0] == 'OFFSET':
                     operands.append('(%s)' % ''.join(op[1:]))
                 else:
-                    raise NotImplementedError("Don't know how to generate pointer access for MOV: %s" % str(op))
+                    operands.append('(%s)' % ''.join(op))
             elif self._is_ptr_read(op):
                 op = op[2]
                 if op[0] == '[' and op[1:-1] in self.regmap:
