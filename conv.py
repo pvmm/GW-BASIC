@@ -1762,6 +1762,8 @@ class PasmoWriter:
             if self._is_ptr_read_through_bx(op2):
                 return 'OR (HL)'
             if len(op2) == 2 and op2[0] == 'LOW':
+                if isinstance(op2[1], int):
+                    return 'OR %dD' % op2[1]
                 return 'OR %s' % op2[1]
         if op1 == op2:
             return 'OR A' # NOP, but clear C/N/P/V flags
