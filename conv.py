@@ -1846,10 +1846,11 @@ class PasmoWriter:
         op = token['operands'][0]
         if isinstance(op, str):
             return 'JP C, %s' % op
-        if len(token['operands']) == 1:
-            return 'JP C, %s' % op[0]
-        if len(token['operands']) == 2 and op[0] == 'SHORT':
-            return 'JR C, %s' % op[1]
+        if isinstance(op, tuple):
+            if len(op) == 1:
+                return 'JP C, %s' % op[0]
+            if len(op) == 2 and op[0] == 'SHORT':
+                return 'JR C, %s' % op[1]
         raise SyntaxError("Can't generate JB %s" % token)
 
     def _gen_instruction_jnae(self, token):
