@@ -2217,7 +2217,11 @@ class PasmoWriter:
         return '\torg %s' % token['value']
 
     def _gen_db(self, token):
-        return '\tdb %s' % ', '.join(str(b) for b in token['bytes'])
+        bytes = token['bytes'][0]
+        if isinstance(bytes, tuple):
+            if bytes[0] == 'offset':
+                return "\tDB %s" % bytes[1]
+        return '\tDB %s' % bytes
 
     def _gen_dw(self, token):
         return '\tdw %s' % ', '.join(str(b) for b in token['bytes'])
