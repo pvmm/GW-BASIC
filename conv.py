@@ -1672,7 +1672,7 @@ class PasmoWriter:
         if self._is_16bit_reg(op):
             if op != 'AX':
                 return 'PUSH %s' % self.regmap[op]
-            return '; FIXME: this is invalid Z80\n\tLD C\', A\n\tPUSH BC\''
+            return 'PUSH AF'
         # FIXME: check if op is a dword label first!
         return 'PUSH HL\n\tLD HL, (%s)\n\tEX (SP), HL' % op
 
@@ -1684,7 +1684,7 @@ class PasmoWriter:
         if self._is_16bit_reg(op):
             if op != 'AX':
                 return 'POP %s' % self.regmap[op]
-            return '; FIXME: this is invalid Z80\n\tPOP BC\'\n\tLD A, C\''
+            return 'POP AF'
         raise SyntaxError("Only 16-bit registers can be popped (trying %s)" % op)
 
     def _gen_instruction_pushf(self, token):
