@@ -581,12 +581,18 @@ class Parser:
         except ValueError:
             pass
 
-        if db[-1] == 'D':
-            return int(db[:-1], 10)
-        if db[-1] == 'H':
-            return int(db[:-1], 16)
-        if db[-1] == 'O':
-            return int(db[:-1], 8)
+        try:
+            if db[-1] == 'D':
+                return int(db[:-1], 10)
+            print(2)
+            if db[-1] == 'H':
+                return int(db[:-1], 16)
+            if db[-1] == 'O':
+                return int(db[:-1], 8)
+        except ValueError:
+            pass
+
+        return db
 
     def _parse_macro_movri(self, arguments, comment):
         if len(arguments) != 4:
@@ -913,10 +919,11 @@ class Parser:
         return self._parse_asm
 
     def _parse_data(self, typ, token):
+        print(typ, token)
         if token['value'].startswith('OFFSET'):
-            value = ('offset', token['value'][len("OFFSET"):].strip())
+            value = ('offset', self._parse_byte_from_db(token['value'][len("OFFSET"):].strip()))
         else:
-            value = token['value']
+            value = self._parse_byte_from_db(token['value'])
 
         self._emit({'type': typ, 'bytes': (value,)})
         return self._parse_asm
@@ -2237,7 +2244,11 @@ class PasmoWriter:
         bytes = token['bytes'][0]
         if isinstance(bytes, tuple):
             if bytes[0] == 'offset':
+                if isinstance(bytes[1], int):
+                    return "\tDB %dD" % bytes[1]
                 return "\tDB %s" % bytes[1]
+        if isinstance(bytes, int):
+            return "\tDB %dD" % bytes
         return '\tDB %s' % bytes
 
     def _gen_dw(self, token):
