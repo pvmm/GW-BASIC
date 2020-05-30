@@ -1500,7 +1500,7 @@ class PasmoWriter:
             if op in self.regmap:
                 operands.append(self.regmap[op])
             elif self._is_ptr_access_through_extern(op):
-                operands.append('(%s)' % op)
+                operands.append('(%s)' % ''.join(op))
             elif self._is_ptr_read(op):
                 op = op[2]
                 if op[0] == '[' and op[1:-1] in self.regmap:
@@ -1877,7 +1877,11 @@ class PasmoWriter:
         return isinstance(op, tuple) and len(op) == 3 and op[:2] == ('BYTE', 'PTR')
 
     def _is_ptr_access_through_extern(self, op):
-        return self.transformer.extern(op) in ('WORD', 'BYTE')
+        if isinstance(op, str):
+            return self.transformer.extern(op) in ('WORD', 'BYTE')
+        if isinstance(op, tuple):
+            return any(self._is_ptr_access_through_extern(op) for op in op)
+        return False
 
     def _gen_instruction_and(self, token):
         assert len(token['operands']) == 2
