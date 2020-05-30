@@ -1857,12 +1857,10 @@ class PasmoWriter:
         return 'SCF'
 
     def _gen_instruction_lahf(self, token):
-        assert len(token['operands']) == 0
-        return 'LD A, F'
+        raise NotImplementedError("This use of LAHF is not supported")
 
     def _gen_instruction_sahf(self, token):
-        assert len(token['operands']) == 0
-        return 'LD F, A'
+        raise NotImplementedError("This use of SAHF is not supported")
 
     def _gen_instruction_cmc(self, token):
         assert len(token['operands']) == 0
