@@ -1525,8 +1525,8 @@ class PasmoWriter:
                     operands.append('(%s)' % op)
                 elif len(op) == 3 and op[:2] == ('BYTE', 'PTR'):
                     operands.append('(%s)' % op[2])
-                elif len(op) == 2 and op[0] == 'OFFSET':
-                    operands.append('(%s)' % op[1])
+                elif len(op) >= 2 and op[0] == 'OFFSET':
+                    operands.append('(%s)' % ''.join(op[1:]))
                 else:
                     raise NotImplementedError("Don't know how to generate pointer access for MOV: %s" % str(op))
             elif self._is_ptr_read(op):
