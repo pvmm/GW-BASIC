@@ -1628,7 +1628,7 @@ class PasmoWriter:
                         'CP %dD\n\t' +
                         'LD A, H\n\t' +
                         'POP HL\n\t' +
-                        'POP BC\n\t') % op2
+                        'POP BC') % op2
         if self._is_ptr_read_through_bx(op1):
             if self._is_low_imm8(op2):
                 op2 = op2[1]
@@ -1663,20 +1663,20 @@ class PasmoWriter:
                     'SBC DE, HL\n\t' +
                     'ADD DE, HL\n\t' +
                     'POP DE\n\t' +
-                    'POP HL\n\t') % op2
+                    'POP HL') % op2
         if op2 in self.regmap:
             reg = self.regmap[op2]
             if op1 == 'BX':
                 return ('OR A\n\t' + \
                         'SBC HL, %s\n\t' + \
-                        'ADD HL, %s\n\t') % (reg, reg)
+                        'ADD HL, %s') % (reg, reg)
             if op1 == '[BX]':
                 return ('PUSH HL\n\t' + \
                         'LD HL, (HL)\n\t' + \
                         'OR A\n\t' + \
                         'SBC HL, %s\n\t' + \
                         'ADD HL, %s\n\t' + \
-                        'POP HL\n\t') % (reg, reg)
+                        'POP HL') % (reg, reg)
         raise SyntaxError("Don't know how to generate CMP: %s" % token)
 
     def _gen_instruction_ja(self, token):
