@@ -1350,8 +1350,8 @@ class Transformer:
             if window[0] is None:
                 break
 
-            matched = self._match(window, ('LAHF', ()), ('ADD', ('BX', 'DX')), ('RCR', ('SI', None)), ('SAHF', ()), ('RCL', ('SI', None)))
-            if matched:
+            matched = self._match(window, ('LAHF', ()), ('ADD', None), ('RCR', ('SI', None)), ('SAHF', ()), ('RCL', ('SI', None)))
+            if matched and matched[2]['operands'] == matched[4]['operands']:
                 fill_dict(matched,
                     {'op': 'savepsw', 'operands': ('reg',)},
                     {'op': matched[1]['op'], 'operands': matched[1]['operands']},
