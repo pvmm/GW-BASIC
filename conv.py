@@ -1302,6 +1302,9 @@ class Transformer:
             return True
 
         def _match_op(code, pattern):
+            if code is None:
+                return False
+
             if code['type'] == 'label':
                 return pattern == ('??L:', None) and self.autogenlabel_re.fullmatch(code['identifier'])
 
@@ -1343,9 +1346,17 @@ class Transformer:
                 for window_token, new_token in zip(window, new_tokens):
                     trans_dict[window_token['id']] = new_token
 
-        for window in windowed((token for token in tokens if token['type'] in {'label', 'instruction'}), 4):
+        for window in windowed((token for token in tokens if token['type'] in {'label', 'instruction'}), 5):
             if window[0] is None:
                 break
+
+            matched = self._match(window, ('LAHF', ()), ('ADD', ('BX', 'DX')), ('RCR', ('SI', None)), ('SAHF', ()), ('RCL', ('SI', None)))
+            if matched:
+                fill_dict(matched,
+                    {'op': 'savepsw', 'operands': ('reg',)},
+                    {'op': matched[1]['op'], 'operands': matched[1]['operands']},
+                    {'op': 'restorepsw', 'operands': ('reg',)})
+                continue
 
             matched = self._match(window, ('POP', ('AX',)), ('XCHG', ('AL', 'AH')), ('SAHF', ()))
             if matched:
@@ -2179,11 +2190,15 @@ class PasmoWriter:
     def _gen_instruction_savepsw(self, token):
         if token['operands'] == ('stack',):
             return 'PUSH AF'
+        if token['operands'] == ('reg',):
+            return 'EX AF, AF\''
         raise SyntaxError("Internal error: operands for savepsw are invalid: %s" % str(token))
 
     def _gen_instruction_restorepsw(self, token):
         if token['operands'] == ('stack',):
             return 'POP AF'
+        if token['operands'] == ('reg',):
+            return 'EX AF, AF\''
         raise SyntaxError("Internal error: operands for savepsw are invalid: %s" % str(token))
 
     def _gen_instruction_djnz(self, token):
