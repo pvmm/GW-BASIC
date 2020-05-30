@@ -1392,9 +1392,9 @@ class Transformer:
                 fill_dict(matched, {'op': 'mul16by8', 'operands': ('AL', 'DX', 'DL')})
                 continue
 
-            matched = self._match(window, ({'JZ', 'JAE', 'JB', 'JS', 'JNZ', 'JNAE', 'JNB', 'JNS'}, (('SHORT', None),)), ('CALL', None), ('??L:', None))
+            matched = self._match(window, ({'JZ', 'JAE', 'JB', 'JS', 'JNZ', 'JNAE', 'JNB', 'JNS'}, (('SHORT', None),)), ({'JMP', 'CALL'}, None), ('??L:', None))
             if matched and self.autogenlabel_re.fullmatch(matched[0]['operands'][0][1]):
-                fill_dict(matched, {'op': 'call_' + self.inverted_jumps[window[0]['op']][1:], 'operands': window[1]['operands']})
+                fill_dict(matched, {'op': window[1]['op'] + '_' + self.inverted_jumps[window[0]['op']][1:], 'operands': window[1]['operands']})
                 continue
 
         return trans_dict
@@ -2147,6 +2147,21 @@ class PasmoWriter:
 
     def _gen_instruction_ret_jnae(self, token):
         return self._gen_instruction_ret_jb(token)
+
+    def _gen_instruction_jmp_ae(self, token):
+        return self._gen_instruction_jae(token)
+
+    def _gen_instruction_jmp_nae(self, token):
+        return self._gen_instruction_jnae(token)
+
+    def _gen_instruction_jmp_z(self, token):
+        return self._gen_instruction_jz(token)
+
+    def _gen_instruction_jmp_nz(self, token):
+        return self._gen_instruction_jnz(token)
+
+    def _gen_instruction_jmp_ns(self, token):
+        return self._gen_instruction_jns(token)
 
     def _gen_instruction_std(self, token):
         # FIXME: what to do here?
