@@ -1710,7 +1710,7 @@ class PasmoWriter:
         assert len(token['operands']) == 1
         op = token['operands'][0]
         if isinstance(op, str):
-            return 'JP Z, %s' % op[0]
+            return 'JP Z, %s' % op
         if len(op) == 2 and op[0] == 'SHORT':
             return 'JR Z, %s' % op[1]
         raise SyntaxError("Unsupported JZ to %s" % op)
