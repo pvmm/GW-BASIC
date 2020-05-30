@@ -1362,7 +1362,7 @@ class Transformer:
                 fill_dict(matched, {'op': 'djnz', 'operands': window[1]['operands']})
                 continue
 
-            matched = self._match(window, ({'JAE', 'JZ', 'JNZ', 'JNAE', 'JNB', 'JS'}, (('SHORT', '$+3'),)), ('RET', ()))
+            matched = self._match(window, ({'JZ', 'JAE', 'JB', 'JS', 'JNZ', 'JNAE', 'JNB', 'JNS'}, (('SHORT', '$+3'),)), ('RET', ()))
             if matched:
                 inverted = {
                     'JZ': 'JNZ',
@@ -2137,6 +2137,15 @@ class PasmoWriter:
 
     def _gen_instruction_djnz(self, token):
         return 'DJNZ %s' % token['operands'][0][-1]
+
+    def _gen_instruction_ret_jae(self, token):
+        return '%s\n\tRET' % self._gen_instruction_jnae({'operands': ('$+3',)})
+
+    def _gen_instruction_ret_jnae(self, token):
+        return 's\n\tRET' % self._gen_instruction_jae({'operands': ('$+3',)})
+
+    def _gen_instruction_ret_jns(self, token):
+        return '%s\n\tRET' % self._gen_instruction_js({'operands': ('$+3',)})
 
     def _gen_instruction(self, token):
         op = token['op']
