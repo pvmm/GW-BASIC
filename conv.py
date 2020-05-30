@@ -1533,6 +1533,8 @@ class PasmoWriter:
         op1, op2 = token['operands']
         if op1 == 'AL' and self._is_ptr_read_through_bx(op2):
             return '%s A, (HL)' % z80
+        if (op1, op2) == ('AL', 'AL'):
+            return 'RLA'
         if op1 in self.regmap:
             if op2 in self.regmap:
                 return '%s %s, %s' % (z80, self.regmap[op1], self.regmap[op2])
