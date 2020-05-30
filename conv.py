@@ -1291,6 +1291,8 @@ class Transformer:
             code_op, code_oper = code['op'], code['operands']
             pattern_op, pattern_oper = pattern
 
+            code_op = code_op.upper()
+
             if isinstance(pattern_op, str):
                 op_match = code_op == pattern_op
             elif isinstance(pattern_op, set):
@@ -1381,6 +1383,11 @@ class Transformer:
             matched = self._match(window, ({'REP', 'REPE', 'REPZ', 'REPNZ', 'REPNE'}, ({'LODSB', 'LODSW', 'STOSB', 'STOSW', 'MOVSB', 'MOVSW', 'SCASB', 'SCASW', 'CMPSB'},)))
             if matched:
                 fill_dict(matched, {'op': window[0]['op'] + '_' + window[0]['operands'][0], 'operands': ()})
+                continue
+
+            matched = self._match(window, ('XOR', ('AH', 'AH')), ('MUL', ('DX',)), ('MOV', ('DH', 'DL')))
+            if matched:
+                fill_dict(matched, {'op': 'mul16by8', 'operands': ('AL', 'DX', 'DL')})
                 continue
 
         return trans_dict
@@ -2160,6 +2167,9 @@ class PasmoWriter:
 
     def _gen_instruction_ret_jns(self, token):
         return '%s\n\tRET' % self._gen_instruction_js({'operands': ('$+3',)})
+
+    def _gen_instruction_mul16by8(self, token):
+        return '; MUL 16-by-8 %s' % str(token['operands'])
 
     def _gen_instruction(self, token):
         op = token['op']
