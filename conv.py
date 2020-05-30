@@ -437,8 +437,7 @@ class Parser:
                 return None
 
             if token['type'] == 'token':
-                for identifier in token['value'].split(','):
-                    self._emit({'type': 'public', 'identifier': identifier.strip()})
+                self._emit({'type': 'public', 'identifier': token['value']})
             elif token['type'] == 'comma':
                 continue
             elif token['type'] == 'newline':
@@ -449,11 +448,10 @@ class Parser:
         return self._parse_asm
 
     def _parse_extern(self, token):
-        for identifier in token['value'].split(','):
-            identifier = identifier.split(":")
-            if len(identifier) != 2:
-                self._error("Don't know what to do")
-            self._emit({'type': 'extern', 'identifier': identifier[0], 'attr': identifier[1]})
+        identifier = token['value'].split(":")
+        if len(identifier) != 2:
+            self._error("Don't know what to do")
+        self._emit({'type': 'extern', 'identifier': identifier[0], 'attr': identifier[1]})
         return self._parse_asm
 
     def _parse_assign(self, token):
@@ -912,14 +910,12 @@ class Parser:
         return self._parse_asm
 
     def _parse_data(self, typ, token):
-        bytes = []
+        if token['value'].startswith('OFFSET'):
+            value = ('offset', token['value'][len("OFFSET"):].strip())
+        else:
+            value = token['value']
 
-        for tok in token['value'].split(','):
-            if tok.startswith('OFFSET'):
-                bytes.append(('offset', tok[len("OFFSET"):].strip()))
-            else:
-                bytes.append(tok)
-        self._emit({'type': typ, 'bytes': bytes})
+        self._emit({'type': typ, 'bytes': (value,)})
         return self._parse_asm
 
     def _parse_db(self, token):
