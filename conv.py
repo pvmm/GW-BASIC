@@ -77,7 +77,7 @@ class Lexer:
 
     def _ignore(self):
         self.start = self.pos
-    
+
     def _backup(self):
         self.pos -= 1
 
@@ -99,15 +99,15 @@ class Lexer:
             c = self._next()
             if c is None:
                 return self._error('EOF')
-        
+
             if c.isspace():
                 self._backup()
                 self._emit_token('directive')
                 return self._lexer_asm
-            
+
             if not c.isalpha():
                 return self._error('Expecting alphabetic character')
-            
+
     def _lexer_number(self):
         while True:
             c = self._next()
@@ -140,7 +140,7 @@ class Lexer:
             c = self._next()
             if c is None:
                 return self._error('EOF')
-            
+
             if c == comment_char:
                 self._backup()
                 self._emit_token('comment')
@@ -253,7 +253,7 @@ class Lexer:
             if c == '\n':
                 self._emit_token('newline')
                 continue
-            
+
             if c.isspace():
                 self._ignore()
                 continue
@@ -315,7 +315,7 @@ class Parser:
         def queue():
             while self.queue:
                 yield self.queue.popleft()
-    
+
         while self.state is not None:
             yield from queue()
             self.state = self.state()
@@ -418,7 +418,7 @@ class Parser:
             return self._error("Segment seems invalid")
         self._emit({'type': 'assume', 'seg': token['value']})
         return self._parse_asm
-    
+
     def _parse_include(self):
         token = self._must_next_type('token', "Expecting file name to include")
         self._emit({'type': 'include', 'filename': token['value']})
