@@ -1283,10 +1283,10 @@ class Transformer:
         def fill_dict(n, start_id, *with_items):
             if len(with_items) > n:
                 raise NotImplementedError("Can't insert more instructions than the window size")
-            for i in range(start_id, start_id+n):
-                trans_dict[i] = None
             for i, item in enumerate(with_items, start=start_id):
                 trans_dict[i] = item
+            for i in range(start_id+len(with_items), start_id+n):
+                trans_dict[i] = None
 
         for window in windowed((token for token in tokens if token['type'] == 'instruction'), 4):
             if window[0] is None:
