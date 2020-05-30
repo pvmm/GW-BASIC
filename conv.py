@@ -2155,6 +2155,9 @@ class PasmoWriter:
     def _gen_instruction_jmp_ae(self, token):
         return self._gen_instruction_jae(token)
 
+    def _gen_instruction_jmp_s(self, token):
+        return self._gen_instruction_js(token)
+
     def _gen_instruction_jmp_nae(self, token):
         return self._gen_instruction_jnae(token)
 
