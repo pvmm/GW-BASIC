@@ -1637,7 +1637,7 @@ class PasmoWriter:
                 if len(op2) >= 3 and op2[:2] == ('LOW', 'OFFSET'):
                     op2 = ''.join(str(op) for op in op2[2:])
                 elif len(op2) >= 2 and op2[:1] == ('LOW',):
-                    op2 = ''.join(str(op) for op in op2[2:])
+                    op2 = ''.join(str(op) for op in op2[1:])
                 elif self._is_ptr_read_through_bx(op2):
                     op2 = '(HL)'
                 elif len(op2) == 4 and op2[:2] == ('BYTE', 'PTR') and op2[3] in ('[DI]', '[SI]') and isinstance(op2[2], int):
