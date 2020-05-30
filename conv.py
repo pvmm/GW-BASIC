@@ -1242,7 +1242,7 @@ class Transformer:
                     if not code in pattern:
                         return False
                 elif isinstance(pattern, str):
-                    if code_oper != pattern_oper:
+                    if code != pattern:
                         return False
                 elif isinstance(pattern, tuple):
                     if type(code) != type(pattern):
@@ -1254,6 +1254,9 @@ class Transformer:
             return True
 
         def _match_op(code, pattern):
+            if code['type'] == 'label':
+                return False
+
             code_op, code_oper = code['op'], code['operands']
             pattern_op, pattern_oper = pattern
 
@@ -1275,68 +1278,67 @@ class Transformer:
 
             return op_match and oper_match
 
-        return len(match) if all(_match_op(wop, mop) for wop, mop in zip(window[:len(match)], match)) else -1
+        reduced_window = window[:len(match)]
+        return reduced_window if all(_match_op(wop, mop) for wop, mop in zip(window[:len(match)], match)) else ()
 
     def _calculate_transform_dict(self, tokens):
         trans_dict = {}
 
-        def fill_dict(n, start_id, *with_items):
-            if len(with_items) > n:
+        def fill_dict(window, *new_tokens):
+            if len(new_tokens) > len(window):
                 raise NotImplementedError("Can't insert more instructions than the window size")
-            for i, item in enumerate(with_items, start=start_id):
-                trans_dict[i] = item
-            for i in range(start_id+len(with_items), start_id+n):
-                trans_dict[i] = None
+            for token in window:
+                trans_dict[token['id']] = None
+            for window_token, new_token in zip(window, new_tokens):
+                trans_dict[window_token['id']] = new_token
 
-        for window in windowed((token for token in tokens if token['type'] == 'instruction'), 4):
+        for window in windowed((token for token in tokens if token['type'] in {'label', 'instruction'}), 4):
             if window[0] is None:
                 break
 
-            start_id = window[0]['id']
-
             matched = self._match(window, ('POP', ('AX',)), ('XCHG', ('AL', 'AH')), ('SAHF', ()))
-            if matched >= 0:
-                fill_dict(matched, start_id, {'op': 'restorepsw', 'operands': ('stack',)})
+            if matched:
+                fill_dict(matched, {'op': 'restorepsw', 'operands': ('stack',)})
                 continue
 
             matched = self._match(window, ('POP', ('SI',)), ('XCHG', ('SI', 'BX')), ('PUSH', ('SI',)))
-            if matched >= 0:
-                fill_dict(matched, start_id, {'op': 'xthl', 'operands': ()})
+            if matched:
+                fill_dict(matched, {'op': 'xthl', 'operands': ()})
                 continue
 
             matched = self._match(window, ('XOR', ('AH', 'AH')), ('CMP', ('AL', None)), ('JZ', None))
-            if matched >= 0:
-                fill_dict(matched, start_id, {'op': 'cmp', 'operands': window[1]['operands']}, {'op': 'jz', 'operands': window[2]['operands']})
+            if matched:
+                fill_dict(matched, {'op': 'cmp', 'operands': window[1]['operands']}, {'op': 'jz', 'operands': window[2]['operands']})
                 continue
 
             matched = self._match(window, ('POP', ('AX',)), ('OR', ('AH', 'AH')), ('JZ', None))
-            if matched >= 0:
-                fill_dict(matched, start_id, {'op': 'jz', 'operands': window[2]['operands']})
+            if matched:
+                fill_dict(matched, {'op': 'jz', 'operands': window[2]['operands']})
                 continue
 
             matched = self._match(window, ('LAHF', ()), ({'INC', 'DEC'}, ({'BX', 'CX', 'DX'},)), ('SAHF', ()))
-            if matched >= 0:
-                fill_dict(matched, start_id, {'op': window[1]['op'], 'operands': window[1]['operands']})
+            if matched:
+                fill_dict(matched, {'op': window[1]['op'], 'operands': window[1]['operands']})
                 continue
 
             matched = self._match(window, ('LAHF', ()), ('XCHG', ('AL', 'AH')), ('PUSH', ('AX',)), ('XCHG', ('AL', 'AH')))
-            if matched >= 0:
-                fill_dict(matched, start_id, {'op': 'savepsw', 'operands': ('stack',)})
+            if matched:
+                fill_dict(matched, {'op': 'savepsw', 'operands': ('stack',)})
                 continue
 
             matched = self._match(window, ({'JZ', 'JNZ', 'JNAE', 'JNB', 'JS'}, (('SHORT', '$+3'),)))
-            if matched >= 0:
-                fill_dict(matched, start_id, {'op': 'ret_' + window[0]['op'], 'operands': ()})
+            if matched:
+                fill_dict(matched, {'op': 'ret_' + window[0]['op'], 'operands': ()})
                 continue
 
             matched = self._match(window, ({'REP', 'REPE', 'REPZ', 'REPNZ', 'REPNE'}, ({'LODSB', 'LODSW', 'STOSB', 'STOSW', 'MOVSB', 'MOVSW', 'SCASB', 'SCASW', 'CMPSB'},)))
-            if matched >= 0:
-                fill_dict(matched, start_id, {'op': window[0]['op'] + '_' + window[0]['operands'][0], 'operands': ()})
+            if matched:
+                fill_dict(matched, {'op': window[0]['op'] + '_' + window[0]['operands'][0], 'operands': ()})
                 continue
 
-            matched = self._match(window, ({'DEC', 'DECB'}, ('CH',)), ('JNZ', ('SHORT', None)))
-            if matched >= 0:
-                fill_dict(matched, start_id, {'op': 'djnz', 'operands': window[1]['operands']})
+            matched = self._match(window, ({'DEC', 'DECB'}, ('CH',)), ('JNZ', (('SHORT', None),)))
+            if matched:
+                fill_dict(matched, {'op': 'djnz', 'operands': window[1]['operands']})
                 continue
 
         return trans_dict
@@ -2091,6 +2093,9 @@ class PasmoWriter:
         if token['operands'] == ('stack',):
             return 'POP AF'
         raise SyntaxError("Internal error: operands for savepsw are invalid: %s" % str(token))
+
+    def _gen_instruction_djnz(self, token):
+        return 'DJNZ %s' % token['operands'][0][-1]
 
     def _gen_instruction(self, token):
         op = token['op']
