@@ -584,7 +584,6 @@ class Parser:
         try:
             if db[-1] == 'D':
                 return int(db[:-1], 10)
-            print(2)
             if db[-1] == 'H':
                 return int(db[:-1], 16)
             if db[-1] == 'O':
@@ -919,7 +918,6 @@ class Parser:
         return self._parse_asm
 
     def _parse_data(self, typ, token):
-        print(typ, token)
         if token['value'].startswith('OFFSET'):
             value = ('offset', self._parse_byte_from_db(token['value'][len("OFFSET"):].strip()))
         else:
