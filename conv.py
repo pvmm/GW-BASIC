@@ -1356,7 +1356,12 @@ class Transformer:
                 fill_dict(matched, {'op': 'savepsw', 'operands': ('stack',)})
                 continue
 
-            matched = self._match(window, ({'JZ', 'JNZ', 'JNAE', 'JNB', 'JS'}, (('SHORT', '$+3'),)))
+            matched = self._match(window, ({'DEC', 'DECB'}, ('CH',)), ('JNZ', (('SHORT', None),)))
+            if matched:
+                fill_dict(matched, {'op': 'djnz', 'operands': window[1]['operands']})
+                continue
+
+            matched = self._match(window, ({'JZ', 'JNZ', 'JNAE', 'JNB', 'JS'}, (('SHORT', '$+3'),)), ('RET', ()))
             if matched:
                 fill_dict(matched, {'op': 'ret_' + window[0]['op'], 'operands': ()})
                 continue
@@ -1364,11 +1369,6 @@ class Transformer:
             matched = self._match(window, ({'REP', 'REPE', 'REPZ', 'REPNZ', 'REPNE'}, ({'LODSB', 'LODSW', 'STOSB', 'STOSW', 'MOVSB', 'MOVSW', 'SCASB', 'SCASW', 'CMPSB'},)))
             if matched:
                 fill_dict(matched, {'op': window[0]['op'] + '_' + window[0]['operands'][0], 'operands': ()})
-                continue
-
-            matched = self._match(window, ({'DEC', 'DECB'}, ('CH',)), ('JNZ', (('SHORT', None),)))
-            if matched:
-                fill_dict(matched, {'op': 'djnz', 'operands': window[1]['operands']})
                 continue
 
         return trans_dict
