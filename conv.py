@@ -311,6 +311,7 @@ class Parser:
         self.rept_counter = 0
         self.macro_args = deque()
         self.radix = 10
+        self.externs = {}
 
     def parse(self):
         def queue():
@@ -451,6 +452,7 @@ class Parser:
         identifier = token['value'].split(":")
         if len(identifier) != 2:
             self._error("Don't know what to do")
+        self.externs[identifier[0]] = identifier[1]
         self._emit({'type': 'extern', 'identifier': identifier[0], 'attr': identifier[1]})
         return self._parse_asm
 
@@ -1259,6 +1261,9 @@ class Transformer:
     def __init__(self, parser):
         self.parser = parser
 
+    def extern(self, identifier):
+        return self.parser.externs.get(identifier)
+
     def _match(self, window, *match):
         def _match_op_tuple(code_oper, pattern_oper):
             for pattern, code in zip(pattern_oper, code_oper):
@@ -1487,6 +1492,8 @@ class PasmoWriter:
         for op in token['operands']:
             if op in self.regmap:
                 operands.append(self.regmap[op])
+            elif self._is_ptr_access_through_extern(op):
+                operands.append('(%s)' % op)
             elif self._is_ptr_read(op):
                 op = op[2]
                 if op[0] == '[' and op[1:-1] in self.regmap:
@@ -1853,6 +1860,9 @@ class PasmoWriter:
 
     def _is_ptr_read(self, op):
         return isinstance(op, tuple) and len(op) == 3 and op[:2] == ('BYTE', 'PTR')
+
+    def _is_ptr_access_through_extern(self, op):
+        return self.transformer.extern(op) in ('WORD', 'BYTE')
 
     def _gen_instruction_and(self, token):
         assert len(token['operands']) == 2
