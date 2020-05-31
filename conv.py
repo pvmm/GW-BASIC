@@ -1331,8 +1331,7 @@ class Transformer:
 
             return op_match and oper_match
 
-        reduced_window = window[:len(match)]
-        return reduced_window if all(_match_op(wop, mop) for wop, mop in zip(reduced_window, match)) else ()
+        return window if all(_match_op(wop, mop) for wop, mop in zip(window, match)) else ()
 
     def _calculate_transform_dict(self, tokens):
         trans_dict = {}
@@ -1346,16 +1345,23 @@ class Transformer:
                 for window_token, new_token in zip(window, new_tokens):
                     trans_dict[window_token['id']] = new_token
 
-        for window in windowed((token for token in tokens if token['type'] in {'label', 'instruction'}), 5):
+        tokens = list(token for token in tokens if token['type'] in {'label', 'instruction'})
+
+        for window in windowed(tokens, 5):
             if window[0] is None:
                 break
-
             matched = self._match(window, ('LAHF', ()), ('ADD', None), ('RCR', ('SI', None)), ('SAHF', ()), ('RCL', ('SI', None)))
             if matched and matched[2]['operands'] == matched[4]['operands']:
                 fill_dict(matched,
                     {'op': 'savepsw', 'operands': ('reg',)},
                     {'op': matched[1]['op'], 'operands': matched[1]['operands']},
                     {'op': 'restorepsw', 'operands': ('reg',)})
+                continue
+
+        for window in windowed(tokens, 3):
+            matched = self._match(window, ({'JZ', 'JAE', 'JB', 'JS', 'JNZ', 'JNAE', 'JNB', 'JNS'}, (('SHORT', None),)), ({'JMP', 'CALL'}, None), ('??L:', None))
+            if matched and self.autogenlabel_re.fullmatch(matched[0]['operands'][0][1]):
+                fill_dict(matched, {'op': matched[1]['op'] + '_' + self.inverted_jumps[matched[0]['op']][1:], 'operands': matched[1]['operands']})
                 continue
 
             matched = self._match(window, ('POP', ('AX',)), ('XCHG', ('AL', 'AH')), ('SAHF', ()))
@@ -1370,37 +1376,17 @@ class Transformer:
 
             matched = self._match(window, ('XOR', ('AH', 'AH')), ('CMP', ('AL', None)), ('JZ', None))
             if matched:
-                fill_dict(matched, {'op': 'cmp', 'operands': window[1]['operands']}, {'op': 'jz', 'operands': window[2]['operands']})
+                fill_dict(matched, {'op': 'cmp', 'operands': matched[1]['operands']}, {'op': 'jz', 'operands': matched[2]['operands']})
                 continue
 
             matched = self._match(window, ('POP', ('AX',)), ('OR', ('AH', 'AH')), ('JZ', None))
             if matched:
-                fill_dict(matched, {'op': 'jz', 'operands': window[2]['operands']})
+                fill_dict(matched, {'op': 'jz', 'operands': matched[2]['operands']})
                 continue
 
             matched = self._match(window, ('LAHF', ()), ({'INC', 'DEC'}, ({'BX', 'CX', 'DX', 'SP'},)), ('SAHF', ()))
             if matched:
-                fill_dict(matched, {'op': window[1]['op'], 'operands': window[1]['operands']})
-                continue
-
-            matched = self._match(window, ('LAHF', ()), ('XCHG', ('AL', 'AH')), ('PUSH', ('AX',)), ('XCHG', ('AL', 'AH')))
-            if matched:
-                fill_dict(matched, {'op': 'savepsw', 'operands': ('stack',)})
-                continue
-
-            matched = self._match(window, ({'DEC', 'DECB'}, ('CH',)), ('JNZ', (('SHORT', None),)))
-            if matched:
-                fill_dict(matched, {'op': 'djnz', 'operands': window[1]['operands']})
-                continue
-
-            matched = self._match(window, ({'JZ', 'JAE', 'JB', 'JS', 'JNZ', 'JNAE', 'JNB', 'JNS'}, (('SHORT', '$+3'),)), ('RET', ()))
-            if matched:
-                fill_dict(matched, {'op': 'ret_' + self.inverted_jumps[window[0]['op']], 'operands': ()})
-                continue
-
-            matched = self._match(window, ({'REP', 'REPE', 'REPZ', 'REPNZ', 'REPNE'}, ({'LODSB', 'LODSW', 'STOSB', 'STOSW', 'MOVSB', 'MOVSW', 'SCASB', 'SCASW', 'CMPSB'},)))
-            if matched:
-                fill_dict(matched, {'op': window[0]['op'] + '_' + window[0]['operands'][0], 'operands': ()})
+                fill_dict(matched, {'op': matched[1]['op'], 'operands': matched[1]['operands']})
                 continue
 
             matched = self._match(window, ('XOR', ('AH', 'AH')), ('MUL', ('DX',)), ('MOV', ('DH', 'DL')))
@@ -1408,9 +1394,21 @@ class Transformer:
                 fill_dict(matched, {'op': 'mul16by8', 'operands': ('AL', 'DX', 'DL')})
                 continue
 
-            matched = self._match(window, ({'JZ', 'JAE', 'JB', 'JS', 'JNZ', 'JNAE', 'JNB', 'JNS'}, (('SHORT', None),)), ({'JMP', 'CALL'}, None), ('??L:', None))
-            if matched and self.autogenlabel_re.fullmatch(matched[0]['operands'][0][1]):
-                fill_dict(matched, {'op': window[1]['op'] + '_' + self.inverted_jumps[window[0]['op']][1:], 'operands': window[1]['operands']})
+        for window in windowed(tokens, 4):
+            matched = self._match(window, ('LAHF', ()), ('XCHG', ('AL', 'AH')), ('PUSH', ('AX',)), ('XCHG', ('AL', 'AH')))
+            if matched:
+                fill_dict(matched, {'op': 'savepsw', 'operands': ('stack',)})
+                continue
+
+        for window in windowed(tokens, 2):
+            matched = self._match(window, ({'DEC', 'DECB'}, ('CH',)), ('JNZ', (('SHORT', None),)))
+            if matched:
+                fill_dict(matched, {'op': 'djnz', 'operands': matched[1]['operands']})
+                continue
+
+            matched = self._match(window, ({'JZ', 'JAE', 'JB', 'JS', 'JNZ', 'JNAE', 'JNB', 'JNS'}, (('SHORT', '$+3'),)), ('RET', ()))
+            if matched:
+                fill_dict(matched, {'op': 'ret_' + self.inverted_jumps[matched[0]['op']], 'operands': ()})
                 continue
 
             matched = self._match(window, ('POP', ('AX',)), ('SAHF', ()))
@@ -1421,6 +1419,12 @@ class Transformer:
             matched = self._match(window, ('LAHF', ()), ('PUSH', ('AX',)))
             if matched:
                 fill_dict(matched, {'op': 'PUSH', 'operands': ('AX',)})
+                continue
+
+        for window in windowed(tokens, 1):
+            matched = self._match(window, ({'REP', 'REPE', 'REPZ', 'REPNZ', 'REPNE'}, ({'LODSB', 'LODSW', 'STOSB', 'STOSW', 'MOVSB', 'MOVSW', 'SCASB', 'SCASW', 'CMPSB'},)))
+            if matched:
+                fill_dict(matched, {'op': matched[0]['op'] + '_' + matched[0]['operands'][0], 'operands': ()})
                 continue
 
         return trans_dict
