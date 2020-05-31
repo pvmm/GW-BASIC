@@ -40,3 +40,4 @@ files:
   * GWMAIN.ASM
   * MACLNG.ASM
   * OEM.H
+  * IBMRES.ASM
