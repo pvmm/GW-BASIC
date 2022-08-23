@@ -11,7 +11,9 @@ from .writer import PasmoWriter
 
 
 def main():
-    lexer = Lexer(sys.stdin)
+    #import pudb as pdb; pdb.set_trace()
+    with open(sys.argv[1]) as file:
+        lexer = Lexer(file)
     parser = Parser(lexer)
     transformer = Transformer(parser)
     writer = PasmoWriter(transformer)
